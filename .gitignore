@@ -1,0 +1,5 @@
+heroku-buildpack-nginx/*
+kotya-webserver2/*
+kotya-webserver2__/*
+nginx-uwsgi-heroku/*
+python-getting-started/*
