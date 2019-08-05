@@ -1,0 +1,50 @@
+<html>
+<head>
+  <title>bf</title>
+  <meta charset="utf-8">
+  <link rel="stylesheet" type="text/css" href="www_bf/css/scrollbar.css">
+  <link rel="stylesheet" type="text/css" href="www_bf/css/buttons.css">
+  <link rel="stylesheet" type="text/css" href="www_bf/css/index.css">
+  <script src="www_bf/js/index.js"></script>
+  <script src="www_bf/js/utils.js"></script>
+  <script src="www_bf/js/bf.js"></script>
+</head>
+<body>
+<div class="wrapper">
+  <div class="body-hat">
+    <div class="title">&gt;Brainfuck Interpreter</div>
+    <div class="button-bar">
+      <div class="button button-play" title="Interpret"></div>
+      <div class="button button-pause disabled" title="Pause"></div>
+      <div class="button button-skip" title="Next command"></div>
+      <div class="button button-replay" title="Reinterpret"></div>
+    </div>
+  </div>
+  <div class="body-content">
+    <div class="column">
+      <div class="container memory">
+        <div class="hat">memory</div>
+        <div class="content"></div>
+      </div>
+      <div class="container output">
+        <div class="hat">output</div>
+        <div class="content"></div>
+      </div>
+    </div>
+    <div class="container code">
+      <div class="hat">code</div>
+
+      <div class="editor">
+        <div class="line-number">1</div>
+
+        <div class="content" contenteditable></div>
+      </div>
+    </div>
+  </div>
+  <div class="status-bar">
+    <div class="autosave saved">saved</div>
+    <div class="status">ready</div>
+  </div>
+</div>
+</body>
+</html>

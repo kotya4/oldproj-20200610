@@ -1,0 +1,121 @@
+@import url('https://fonts.googleapis.com/css?family=Roboto+Mono&display=swap');
+
+body {
+  background: #111;
+  color: lightgrey;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.body-hat {
+  user-select: none;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+}
+
+.body-hat .title {
+  //font-family: 'Comic Sans MS', sans-serif;
+  font-size: 24px;
+  color: white;
+}
+
+.status-bar {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 5px 0 5px;
+}
+
+.status-bar .autosave.saved {
+  opacity: 0.5;
+}
+
+.status-bar .status.error {
+  background: red;
+}
+
+
+
+
+
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.body-content {
+  display: flex;
+  flex: 1;
+  //display: flex;
+  overflow-y: auto;
+}
+
+.container {
+  border-style: solid;
+  border-width: 1px;
+  border-color: #554;
+  overflow-y: auto;
+  flex-grow: 1;
+  width: 300px;
+}
+
+.container .hat {
+  user-select: none;
+  background: #554;
+  text-align: center;
+  font-size: 10px;
+  color: #aaa;
+}
+
+.container .content {
+  padding: 5px;
+  overflow-wrap: break-word;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+}
+
+.code {
+
+}
+
+
+.code .editor {
+  display: flex;
+}
+
+.code .line-number {
+  color: #aaa;
+  background: #111;
+  padding: 5px;
+  user-select: none;
+  text-align: right;
+}
+
+
+.code .content {
+  background: #222;
+  outline: none;
+  white-space: nowrap;
+  /* meh... */
+  width: 10000px;
+  width: -moz-available;
+  width: -webkit-fill-available;
+  width: fill-available;
+}
+
+
+.memory {
+
+}
+
+.output {
+
+}

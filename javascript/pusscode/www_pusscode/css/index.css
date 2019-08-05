@@ -1,0 +1,103 @@
+@import url('https://fonts.googleapis.com/css?family=Roboto+Mono&display=swap');
+
+body {
+  background: #111;
+  color: lightgrey;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 12px;
+  margin: 0;
+  user-select: none;
+  overflow: hidden;
+}
+
+.header {
+  margin-bottom: 1.5em;
+}
+
+/* basic class for any draggable and placeable */
+
+.layer {
+  width: 200px;
+  border-radius: 2em;
+  margin-bottom: 1em;
+  padding: 1em;
+}
+
+/* container for placeable layers */
+
+.dictionary {
+  position: absolute;
+  right: 0;
+  top: 0;
+  background: white;
+  padding: 1em;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+/* placeable layer (cloneable by default) */
+
+.command {
+  cursor: pointer;
+  color: black;
+  background: grey;
+  text-align: left;
+  padding: 1em;
+}
+
+/* container for draggable and placeable layers (make them incloneable) */
+
+.program {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: white;
+  padding: 1em;
+  overflow-y: auto;
+  box-sizing: border-box;
+  transition: 0.1s linear;
+  padding-bottom: 15em; /* additional offset */
+}
+
+/* draggable layer (visible on hover) */
+
+.freespace {
+  background: lightgrey;
+  padding-bottom: 0;
+  padding-top: 0;
+}
+
+.freespace.hover {
+  padding-top: 3.3em; /* magic additional 0.3em */
+}
+
+.freespace.hover-transition {
+  transition: 0.1s linear;
+}
+
+
+
+.redbox {
+  position: absolute;
+  left: 0;
+  top: 0;
+  background: red;
+  opacity: 0.2;
+  width: 0;
+  height: 0;
+  z-index: 100;
+  display: none;
+}
+
+.yellowbox {
+  position: absolute;
+  left: 0;
+  top: 0;
+  background: yellow;
+  opacity: 0.2;
+  width: 0;
+  height: 0;
+  z-index: 100;
+  display: none;
+}

@@ -86,7 +86,7 @@ window.onload = function () {
   const angle_step = fov / slices_num;
 
   let last_timestamp = 0;
-  (function drawFrame(timestamp) {
+  (function draw_frame(timestamp) {
     const elapsed = timestamp - last_timestamp;
     last_timestamp = timestamp;
 
@@ -193,7 +193,7 @@ window.onload = function () {
     ctx.fillText(~~elapsed, 600, 20);
     ctx.fillText(~~max_slices_len, 600, 40);
 
-    window.requestAnimationFrame(drawFrame);
+    window.requestAnimationFrame(draw_frame);
   })();
 
 
