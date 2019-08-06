@@ -31,7 +31,7 @@ function Render(parent, opt = {}) {
     const framerate = (opt.framerate || {});
     if (!framerate.color) framerate.color = 'white';
     if (!framerate.font) framerate.font = '20px "Arial"';
-    if (!framerate.pos) framerate.pos = [10, 1 + parseInt(framerate.font)];
+    if (!framerate.pos) framerate.pos = [1, 1 + parseInt(framerate.font)];
 
     // starts render
     let last_timestamp = 0;

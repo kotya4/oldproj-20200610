@@ -1,7 +1,14 @@
-function Mouse(ctx) {
+function Mouse(rect) {
+  if (!rect) throw Error(`Mouse: 'rect' not provided`);
+  let __listen = () => { }
+
   const mouse = {
-    x: 0,
-    y: 0,
+    x: Infinity,
+    y: Infinity,
+    is_left_down: false,
+    is_right_down: false,
+    listen(func) { __listen = func; },
+
     draw(ctx) {
       ctx.fillStyle = 'yellow';
       ctx.beginPath();
@@ -10,10 +17,27 @@ function Mouse(ctx) {
     },
   };
 
+  window.addEventListener('mousedown', event => {
+    if (event.which === 1) mouse.is_left_down = true;
+    if (event.which === 3) mouse.is_right_down = true;
+    __listen(event);
+  });
+
+  window.addEventListener('mouseup', event => {
+    if (event.which === 1) mouse.is_left_down = false;
+    if (event.which === 3) mouse.is_right_down = false;
+    __listen(event);
+  });
+
   window.addEventListener('mousemove', event => {
-    const rect = ctx.canvas.getBoundingClientRect();
-    mouse.x = event.clientX - rect.left;
-    mouse.y = event.clientY - rect.top;
+    mouse.x = ~~(event.clientX - rect.x);
+    mouse.y = ~~(event.clientY - rect.y);
+    __listen(event);
+  });
+
+  window.addEventListener('contextmenu', event => {
+    event.preventDefault();
+    return false;
   });
 
   return mouse;

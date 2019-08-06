@@ -1,21 +1,29 @@
 window.onload = function () {
 
+  const storage = Storage();
   const render = Render();
-  const mouse = Mouse(render.ctx);
+  const mouse = Mouse(render.ctx.canvas.getBoundingClientRect());
 
-  const { width, height } = render.sizes();
+  const map = Map(render.sizes(), 30);
+  map.update_from_storage(storage);
 
-  const name = [...Array(~~(Math.random() * 5) + 3)]
-    .map(e => String.fromCharCode('a'.charCodeAt(0) + ~~(Math.random() * 26))).join('');
-
-  render.start((ctx, elapsed) => {
-
-    mouse.draw(ctx);
-
-    ctx.fillStyle = 'red';
-    ctx.fillText(`hello, ${name}`, width / 3, height / 2 - 20);
-
+  mouse.listen(_ => {
+    if (mouse.is_left_down) {
+      const { x, y } = map.cvt_to_map(mouse.x, mouse.y);
+      map.put_to(x, y, 1);
+      storage.save('map', map.map);
+    }
+    if (mouse.is_right_down) {
+      const { x, y } = map.cvt_to_map(mouse.x, mouse.y);
+      map.put_to(x, y, 0);
+      storage.save('map', map.map);
+    }
   });
 
 
+  render.start((ctx, elapsed) => {
+    map.draw(ctx);
+    map.draw_mouse(ctx, mouse.x, mouse.y);
+    mouse.draw(ctx);
+  });
 }
