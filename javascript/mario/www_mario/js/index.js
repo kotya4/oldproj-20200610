@@ -2,10 +2,11 @@ window.onload = function () {
 
   const storage = Storage();
   const render = Render();
-  const mouse = Mouse(render.ctx.canvas.getBoundingClientRect());
+  const mouse = Mouse(render.ctx.canvas);
 
   const map = Map(render.sizes(), 30);
   map.update_from_storage(storage);
+
 
   mouse.listen(_ => {
     if (mouse.is_left_down) {
@@ -19,6 +20,11 @@ window.onload = function () {
       storage.save('map', map.map);
     }
   });
+
+
+
+  Keyboard();
+
 
 
   render.start((ctx, elapsed) => {

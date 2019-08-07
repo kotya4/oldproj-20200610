@@ -1,5 +1,5 @@
-function Mouse(rect) {
-  if (!rect) throw Error(`Mouse: 'rect' not provided`);
+function Mouse(parent) {
+  if (!parent) throw Error(`Mouse: 'parent' not provided`);
   let __listen = () => { }
 
   const mouse = {
@@ -30,6 +30,7 @@ function Mouse(rect) {
   });
 
   window.addEventListener('mousemove', event => {
+    const rect = parent.getBoundingClientRect();
     mouse.x = ~~(event.clientX - rect.x);
     mouse.y = ~~(event.clientY - rect.y);
     __listen(event);
