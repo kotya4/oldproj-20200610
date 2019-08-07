@@ -1,12 +1,25 @@
 function Keyboard() {
-  const keys = [];
-  let repeats = false;
+  const keys = {};
+  let __listen = () => { };
 
-  function set_key(e, pressed) {
+  const keyboard = {
+    is_pressed: false,
+    pressed: key => keys[key],
+    listen: func => __listen = func,
+    trace: _ => Object.keys(keys).filter(key => keys[key]),
+  };
 
-  }
+  window.addEventListener('keydown', e => {
+    keyboard.is_pressed = true;
+    keys[e.code] = true;
+    __listen(e);
+  });
 
-  window.addEventListener('keydown', e => keys[e.keyCode] = true);
-  window.addEventListener('keyup', e => keys[e.keyCode] = false);
+  window.addEventListener('keyup', e => {
+    keyboard.is_pressed = false;
+    keys[e.code] = false;
+    __listen(e);
+  });
 
+  return keyboard;
 }

@@ -1,8 +1,10 @@
 window.onload = function () {
 
+  const keyboard = Keyboard();
   const storage = Storage();
   const render = Render();
   const mouse = Mouse(render.ctx.canvas);
+
 
   const map = Map(render.sizes(), 30);
   map.update_from_storage(storage);
@@ -22,12 +24,18 @@ window.onload = function () {
   });
 
 
-
-  Keyboard();
-
+  keyboard.listen(_ => {
+    //if (keyboard.is_pressed) console.log(keyboard.trace());
+  });
 
 
   render.start((ctx, elapsed) => {
+
+    if (keyboard.pressed('KeyW')) {
+      ctx.fillStyle = 'red';
+      ctx.fillText('W', 100, 100);
+    }
+
     map.draw(ctx);
     map.draw_mouse(ctx, mouse.x, mouse.y);
     mouse.draw(ctx);
