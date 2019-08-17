@@ -35,7 +35,7 @@ function Render(parent, opt = {}) {
 
     // starts render
     let last_timestamp = 0;
-    (function draw_frame(timestamp) {
+    (function draw_frame(timestamp = 0) {
       // calculates elapsed time
       const elapsed = timestamp - last_timestamp;
       last_timestamp = timestamp;

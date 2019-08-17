@@ -1,5 +1,7 @@
-function Map(display_sizes, block_size = 30) {
+function Map(display_sizes) {
   if (!display_sizes) throw Error(`Map: 'display_sizes' not provided`);
+
+  const block_size = __game__.block_size_px;
 
   const width = ~~(display_sizes.width / block_size);
   const height = ~~(display_sizes.height / block_size);
@@ -52,7 +54,7 @@ function Map(display_sizes, block_size = 30) {
     x = ~~x;
     y = ~~y;
     if (x < 0 || y < 0 || x >= map.length || y >= map[0].length) return false;
-    map[~~x][~~y] = o;
+    map[x][y] = o;
     return true;
   }
 
@@ -66,6 +68,14 @@ function Map(display_sizes, block_size = 30) {
   }
 
 
+  function solid(x, y) {
+    x = ~~x;
+    y = ~~y;
+    if (x < 0 || y < 0 || x >= map.length || y >= map[0].length) return false;
+    return map[x][y] === 1;
+  }
+
+
   return {
     map,
     block_size,
@@ -75,5 +85,6 @@ function Map(display_sizes, block_size = 30) {
     draw_mouse,
     put_to,
     draw,
+    solid,
   }
 }

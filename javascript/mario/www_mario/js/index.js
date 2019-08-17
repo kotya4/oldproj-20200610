@@ -6,6 +6,10 @@ window.onload = function () {
   const mouse = Mouse(render.ctx.canvas);
 
 
+  // REMOVE
+  __debug.ctx = render.ctx;
+
+
   const map = Map(render.sizes(), 30);
   map.update_from_storage(storage);
 
@@ -29,15 +33,37 @@ window.onload = function () {
   });
 
 
-  render.start((ctx, elapsed) => {
+  const player = Player({
+    sprites: {},
+    position: { x: 9, y: 9 },
+  });
 
-    if (keyboard.pressed('KeyW')) {
-      ctx.fillStyle = 'red';
-      ctx.fillText('W', 100, 100);
+
+  render.start((ctx, elapsed) => {
+    map.draw(ctx);
+
+    if (keyboard.pressed('KeyA')) {
+      player.move(map, elapsed, 'left');
     }
 
-    map.draw(ctx);
+    if (keyboard.pressed('KeyD')) {
+      player.move(map, elapsed, 'right');
+    }
+
+    if (keyboard.pressed('Space')) {
+      player.move(map, elapsed, 'up');
+    } else {
+      //player.move(map, elapsed, 'down');
+    }
+
+    // draw
+
+    player.draw(ctx);
+
     map.draw_mouse(ctx, mouse.x, mouse.y);
     mouse.draw(ctx);
   });
+
 }
+
+const __debug = {};
