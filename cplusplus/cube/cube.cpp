@@ -1,6 +1,48 @@
-#include <cmath>      // tan, sin, cos, abs
-#include <cstdio>     // printf
-#include <windows.h>  // system("cls"), Sleep
+#include <cmath>  // tan, sin, cos, abs
+#include <cstdio> // printf
+
+#ifdef _WIN32
+
+  #include <windows.h> // system("cls"), Sleep
+
+#endif
+
+#ifdef linux
+
+  #include <unistd.h> // usleep
+
+#endif
+
+// system
+
+void sys__wait(int msec) {
+  #ifdef _WIN32
+
+    Sleep(msec);
+
+  #endif
+
+  #ifdef linux
+
+    usleep(msec * 1000);
+
+  #endif
+}
+
+void sys__cls() {
+  #ifdef _WIN32
+
+    system("cls");
+
+  #endif
+
+  #ifdef linux
+
+    system("clear");
+
+  #endif
+}
+
 
 // screen
 
@@ -17,8 +59,8 @@ void buffer__clear() {
 }
 
 void buffer__flush() {
-  system("cls");
-  printf("%s", BUFFER);
+  sys__cls();
+  printf("%s", *BUFFER);
 }
 
 void buffer__set_pixel(int x, int y, char pixel) {
@@ -60,7 +102,7 @@ void mat4__identity(mat4 &out) {
 }
 
 void mat4__perspective(mat4 &out, double fov, double ratio, double znear, double zfar) {
-  const double m11 = 1.0 / tan(fov / 2.0);
+  const double m11 = 1.0 / tan((double)fov / 2.0);
   const double m00 = ratio * m11;
   const double m22 = -zfar / (zfar - znear);
   const double m32 = m22 * znear;
@@ -216,6 +258,6 @@ int main() {
     mat4__rotate_z(modelview, modelview, +0.150);
     mat4__translate(modelview, modelview, -0.5, -0.5, -0.5);
 
-    Sleep(100);
+    sys__wait(100);
   }
 }
