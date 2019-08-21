@@ -1,24 +1,46 @@
-#include <ctime>  // time(NULL)
-#include <cmath>  // tan, sin, cos, abs
-#include <cstdio> // printf
+#include <ctime>   // time(NULL)
+#include <cmath>   // tan, sin, cos, abs
+#include <cstdio>  // printf
+#include <cstdlib> // qsort
 
 #ifdef _WIN32
   #include <windows.h> // system("cls"), Sleep
+  #include <conio.h>   // _kbhit
 #endif
 
 #ifdef linux
   #include <unistd.h> // usleep
 #endif
 
-#define WIREFRAME 1     // draw wireframe instead of filled shapes?
-#define COLORMODE 0     // draw in color?
-#define FRAME_DELAY 50  // frame delay (can be 0)
-#define WIDTH 80        // screen width
-#define HEIGHT 50       // screen height
 
-// sys
+#define PIXEL_RATIO 1.5 // pixel ratio
+#define WIREFRAME   0   // draw wireframe instead of filled shapes?
+#define COLORMODE   1   // draw in color?
+#define FRAME_DELAY 0   // frame delay (can be 0)
+#define WIDTH       80  // screen width
+#define HEIGHT      50  // screen height
 
-void sys__gotoxy(int x = 0, int y = 0) {
+
+/*
+ * sys
+ *
+ * System functions decorators.
+ */
+
+inline int sys__kbhit() {
+  #ifdef _WIN32
+    return _kbhit();
+  #endif
+
+  #ifdef linux
+
+  #endif
+
+  // default
+  return 0;
+}
+
+inline void sys__gotoxy(int x = 0, int y = 0) {
   #ifdef _WIN32
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), (COORD){ x, y });
   #endif
@@ -28,7 +50,7 @@ void sys__gotoxy(int x = 0, int y = 0) {
   #endif
 }
 
-void sys__color(int color = 0x07) {
+inline void sys__color(int color = 0x07) {
   #ifdef _WIN32
     SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), color);
   #endif
@@ -38,7 +60,7 @@ void sys__color(int color = 0x07) {
   #endif
 }
 
-void sys__wait(int msec) {
+inline void sys__wait(int msec) {
   #ifdef _WIN32
     Sleep(msec);
   #endif
@@ -48,9 +70,9 @@ void sys__wait(int msec) {
   #endif
 }
 
-void sys__cls() {
-  // call sys__cls once before render,
-  // for per-frame clearing use sys_gotoxy()
+inline void sys__cls() {
+  // call 'sys__cls' only once before render,
+  // for per-frame clearing use 'sys_gotoxy(0,0)'
   #ifdef _WIN32
     system("cls");
   #endif
@@ -60,51 +82,89 @@ void sys__cls() {
   #endif
 }
 
-// screen
 
-const double PIXEL_RATIO = 1.5;
-char BUFFER[HEIGHT][WIDTH];
-char COLOR_BUFFER[HEIGHT][WIDTH];
-char CURRENT_PIXEL = 254;
-char CURRENT_COLOR = 0x07;
+/*
+ * polyi
+ *
+ * Sorts polygons (polygon indices) by distance.
+ */
+
+struct polyi {
+  double dist;
+  int index;
+};
+
+int polyi__compare(const void *a, const void *b) {
+  const double l = ((struct polyi *)a)->dist;
+  const double r = ((struct polyi *)b)->dist;
+  int o = 0;
+  if (l < r) o = -1; else if (l > r) o = +1;
+  return o;
+}
+
+// sorts polygons by minimal vertex distance
+void polyi__sort(polyi *out, const double *d, const int (*v)[4], const int len) {
+  // find minimal vertex distance for current polygon
+  for (int i = 0; i < len; ++i) {
+    out[i].index = i;
+    out[i].dist = d[v[i][0]];
+    for (int k = 1; k < 4; ++k)
+      if (d[v[i][k]] < out[i].dist)
+        out[i].dist = d[v[i][k]];
+  }
+  // sort
+  qsort(out, len, sizeof(polyi), polyi__compare);
+}
+
+
+/*
+ * buffer
+ *
+ * Screen buffer.
+ */
+
+char Buffer[HEIGHT][WIDTH];
+char ColorBuffer[HEIGHT][WIDTH];
+char CurrentPixel = 254;
+char CurrentColor = 0x07;
 
 void buffer__clear() {
   for (int y = 0; y < HEIGHT; ++y) {
     for (int x = 0; x < WIDTH - 1; ++x) {
-      BUFFER[y][x] = ' ';
-      COLOR_BUFFER[y][x] = 0x07;
+      Buffer[y][x] = ' ';
+      ColorBuffer[y][x] = 0x07;
     }
-    BUFFER[y][WIDTH - 1] = '\n';
-    COLOR_BUFFER[y][WIDTH - 1] = 0x07;
+    Buffer[y][WIDTH - 1] = '\n';
+    ColorBuffer[y][WIDTH - 1] = 0x07;
   }
-  BUFFER[HEIGHT - 1][WIDTH - 1] = 0;
+  Buffer[HEIGHT - 1][WIDTH - 1] = 0;
 }
 
 void buffer__flush() {
   sys__gotoxy();
   #if COLORMODE
     for (int y = 0; y < HEIGHT; ++y) for (int x = 0; x < WIDTH; ++x) {
-      sys__color(COLOR_BUFFER[y][x]);
-      printf("%c", BUFFER[y][x]);
+      sys__color(ColorBuffer[y][x]);
+      printf("%c", Buffer[y][x]);
     }
     printf("\n");
   #else
-    printf("%s\n", *BUFFER);
+    printf("%s\n", *Buffer);
   #endif
 }
 
-void buffer__set_pixel(char pixel = 254) {
-  CURRENT_PIXEL = pixel;
+void buffer__pixel(char pixel = 254) {
+  CurrentPixel = pixel;
 }
 
-void buffer__set_color(char color = 0x07) {
-  CURRENT_COLOR = color;
+void buffer__color(char color = 0x07) {
+  CurrentColor = color;
 }
 
-void buffer__draw_pixel(int x, int y) {
+void buffer__putpixel(int x, int y) {
   if (x < 0 || x >= WIDTH - 1 || y < 0 || y >= HEIGHT) return;
-  BUFFER[y][x] = CURRENT_PIXEL;
-  COLOR_BUFFER[y][x] = CURRENT_COLOR;
+  Buffer[y][x] = CurrentPixel;
+  ColorBuffer[y][x] = CurrentColor;
 }
 
 void buffer__bresenham(int x1, int y1, const int x2, const int y2) {
@@ -115,7 +175,7 @@ void buffer__bresenham(int x1, int y1, const int x2, const int y2) {
   int err = (dx > dy ? dx : -dy) >> 1;
   int e2;
   for (int i = dx + dy + 1; i--; ) {
-    buffer__draw_pixel(x1, y1);
+    buffer__putpixel(x1, y1);
     if (x1 == x2 && y1 == y2) break;
     e2 = err;
     if (e2 >= -dx) { err -= dy; x1 += sx; }
@@ -130,7 +190,7 @@ void buffer__bresenham_4_connected(int x1, int y1, const int x2, const int y2) {
   const int sy = y1 < y2 ? +1 : -1;
   int e = 0;
   for (int i = dx + dy + 1; i--; ) {
-    buffer__draw_pixel(x1, y1);
+    buffer__putpixel(x1, y1);
     const int e1 = e + dy;
     const int e2 = e - dx;
     if (abs(e1) < abs(e2)) {
@@ -169,11 +229,16 @@ void buffer__fill_convex(const int (*c)[2], const int *v, const int len) {
   }
 }
 
-// matrices, vectors
 
-typedef double mat4 [0x10];
-typedef double vec3 [0x03];
-typedef double vec2 [0x02];
+/*
+ * mat4, vec3, vec2i
+ *
+ * Linear algebra for real.
+ */
+
+typedef double mat4  [0x10];
+typedef double vec3  [0x03];
+typedef int    vec2i [0x02];
 
 void mat4__identity(mat4 &out) {
   for(int i = 0; i < 16; ++i) out[i] = 0;
@@ -270,23 +335,29 @@ void vec3__transform_mat4(vec3 &out, const vec3 &a, const mat4 &m) {
   out[2] = (m[2] * a[0] + m[6] * a[1] + m[10] * a[2] + m[14]) / w;
 }
 
-void vec2__projection(vec2 &out, const vec3 &pos3, const mat4 &vmat, const mat4 &pmat, int w, int h) {
+double vec2i__projection(vec2i &out, const vec3 &pos3, const mat4 &vmat, const mat4 &pmat, int w, int h) {
   vec3 tpos;
   vec3__transform_mat4(tpos, pos3, vmat);
   vec3__transform_mat4(tpos, tpos, pmat);
   out[0] = ((tpos[2] ? tpos[0] / tpos[2] : 0) + 1.0) * (w >> 1);
   out[1] = ((tpos[2] ? tpos[1] / tpos[2] : 0) + 1.0) * (h >> 1);
+  return tpos[2]; // returns Z-distance from camera
 }
 
-// main
 
-int main(int argc, char *argv[]) {
+/*
+ * main
+ *
+ * Main.
+ */
+
+int main() {
   srand(time(NULL));
 
   const double fov = M_PI / 4;
 
   mat4 projection;
-  mat4__perspective(projection, fov, (double)WIDTH / HEIGHT / PIXEL_RATIO, 0.1, 100.0);
+  mat4__perspective(projection, fov, (double)WIDTH / HEIGHT / PIXEL_RATIO, 0.1, 10.0);
   mat4__translate(projection, projection, -0.5, -0.5, -5.0);
 
   mat4 modelview;
@@ -309,7 +380,8 @@ int main(int argc, char *argv[]) {
     { 1.0, 0.0, 1.0 }
   };
 
-  const int indices[6][4] = {
+  const int indices_number = 6;
+  const int indices[indices_number][4] = {
     { 0, 1, 2, 3 },
     { 4, 5, 6, 7 },
     { 0, 1, 5, 4 },
@@ -320,14 +392,11 @@ int main(int argc, char *argv[]) {
 
   sys__cls();
 
-  for (int frame = 0; ; ++frame) {
-    int coords[vertices_number][2];
-    for (int i = 0; i < vertices_number; ++i) {
-      vec2 pos;
-      vec2__projection(pos, vertices[i], modelview, projection, WIDTH, HEIGHT);
-      coords[i][0] = pos[0];
-      coords[i][1] = pos[1];
-    }
+  for (int frame = 0; !sys__kbhit(); ++frame) {
+    vec2i coords[vertices_number]; // projected display coordinates
+    double dists[vertices_number]; // distances
+    for (int i = 0; i < vertices_number; ++i)
+      dists[i] = vec2i__projection(coords[i], vertices[i], modelview, projection, WIDTH, HEIGHT);
 
     buffer__clear();
     #if WIREFRAME
@@ -336,13 +405,15 @@ int main(int argc, char *argv[]) {
       for (int i = 0; i < 4; ++i)
         buffer__bresenham(coords[i][0], coords[i][1], coords[i + 4][0], coords[i + 4][1]);
     #else
-      for (int i = 0; i < 6; ++i) {
+      polyi sorted[indices_number];
+      polyi__sort(sorted, dists, indices, indices_number);
+      for (int i = 0; i < indices_number; ++i) {
         // fill
-        buffer__set_color(0x01 + i);
-        buffer__fill_convex(coords, indices[i], 4);
+        buffer__color(0x01 + sorted[i].index);
+        buffer__fill_convex(coords, indices[sorted[i].index], 4);
         // stroke
-        buffer__set_color();
-        buffer__stroke(coords, indices[i], 4);
+        //buffer__color();
+        //buffer__stroke(coords, indices[sorted[i].index], 4);
       }
     #endif
     buffer__flush();
@@ -350,6 +421,7 @@ int main(int argc, char *argv[]) {
     printf("frame  : %d       \n", frame);
     printf("fov    : %d%c     \n", (int)(fov * 180 / M_PI), 248);
     printf("screen : %dx%d    \n", WIDTH, HEIGHT);
+    printf("PRESS ANY KEY TO EXIT\n");
 
     mat4__translate(modelview, modelview, +0.5, +0.5, +0.5);
     mat4__rotate_x(modelview, modelview, +0.100);
@@ -357,6 +429,12 @@ int main(int argc, char *argv[]) {
     mat4__rotate_z(modelview, modelview, +0.025);
     mat4__translate(modelview, modelview, -0.5, -0.5, -0.5);
 
-    sys__wait(FRAME_DELAY);
+    #if FRAME_DELAY
+      sys__wait(FRAME_DELAY);
+    #endif
   }
+
+  sys__color();
+  sys__cls();
+  return 0;
 }
