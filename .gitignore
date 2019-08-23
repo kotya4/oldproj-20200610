@@ -1,3 +1,7 @@
 kotya-web
 *.sublime-project
 *.sublime-workspace
+__pycache__/
+*.py[cod]
+passwords.json
+vk_config.v2.json

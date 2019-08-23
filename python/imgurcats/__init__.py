@@ -5,30 +5,27 @@ import os
 
 
 MODULE_PATH = os.path.dirname(os.path.realpath(__file__)) + '/'
-LAST_ID_FILENAME = MODULE_PATH + 'last_id'
+LAST_ID = MODULE_PATH + 'last_id'
 
 
 def load_last_id():
     try:
-        with open(LAST_ID_FILENAME, 'r') as f:
-            last_id = f.read()
-        f.close()
-        return last_id
+        with open(LAST_ID, 'r') as f:
+            return f.read()
     except FileNotFoundError:
         return None
 
 
 def save_last_id(last_id):
-    f = open(LAST_ID_FILENAME, 'w+')
+    f = open(LAST_ID, 'w+')
     f.write(last_id)
     f.close()
 
 
 def load_image_ids():
     r = requests.get('https://imgur.com/r/cats/')
-
     if r.status_code != requests.codes.ok:
-        print('imgur server sent status {}'.format(r.status_code))
+        print(f'imgur server sent status {r.status_code}')
         return None
 
     start_i = r.text.find('<div class="posts sub-gallery br5 first-child">')
@@ -56,29 +53,11 @@ def filter_new_ones(ids, last_id):
     return ids
 
 
-def make_urls_from(ids):
-    return ['https://i.imgur.com/{}.jpg'.format(id) for id in ids]
-
-
-def gimme_those_cats():
-    last_id = load_last_id()
+def gimme_cat(test = False):
+    last_id = load_last_id() if not test else None
     img_ids = load_image_ids()
     new_ids = filter_new_ones(img_ids, last_id)
     if len(new_ids) > 0:
-        save_last_id(new_ids[0])
-        urls = make_urls_from(new_ids)
-        return urls
-    return []
-
-
-def test():
-    urls = gimme_those_cats()
-    if len(urls) > 0:
-        for url in urls:
-            print(url)
-    else:
-        print('Sorry, no imgur cats for you today.')
-
-
-if '__main__' == __name__:
-    test()
+        save_last_id(new_ids[-1])
+        return f'https://i.imgur.com/{new_ids[-1]}.jpg'
+    return None
