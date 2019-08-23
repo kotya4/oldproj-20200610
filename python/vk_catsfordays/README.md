@@ -14,3 +14,14 @@ vk_catsfordays.post() # use test() for more traced info
 + requests
 + vk_api
 + (imgurcats)
+
+Also `passwords.json` required:
+
+```json
+{
+  "app_id": ...,
+  "login": "...",
+  "password": "...",
+  "service_key": "..."
+}
+```
