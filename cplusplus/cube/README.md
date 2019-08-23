@@ -1,4 +1,4 @@
-# [![](http://kotya.tk/favicon.ico)](http://kotya.tk) cube.exe
+# [![](http://kotya.tk/favicon.ico)](http://kotya.tk) cube
 
 ---
 
