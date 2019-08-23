@@ -408,10 +408,8 @@ int main() {
       polyi sorted[indices_number];
       polyi__sort(sorted, dists, indices, indices_number);
       for (int i = 0; i < indices_number; ++i) {
-        // fill
         buffer__color(0x01 + sorted[i].index);
         buffer__fill_convex(coords, indices[sorted[i].index], 4);
-        // stroke
         //buffer__color();
         //buffer__stroke(coords, indices[sorted[i].index], 4);
       }
