@@ -1,19 +1,24 @@
-# [![](http://kotya.tk/favicon.ico)](http://kotya.tk) imgurcats
+# imgurcats
 
 ---
 
-Крадёт ссылки из [/r/cats](https://imgur.com/r/cats/)
+Крадёт котов из [/r/cats](https://imgur.com/r/cats/)
 
 
 ```python
 import imgurcats
-url = imgurcats.gimme_cat()
-if url:
-  print(f'What a lovely cat {url} :3')
+
+cat = imgurcats.gimme_cat()
+
+if cat:
+  raw_image = imgurcats.download(cat['img_url'])
+  print(f'What a lovely cat :3')
 else:
   print('Sorry, no imgur cats for today :(')
+
 ```
 
 #requirements:
 
 + requests
++ (simplehtmlparser)

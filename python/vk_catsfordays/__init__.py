@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 import imgurcats
-import requests
-import shutil
 import vk_api
 import json
-import re
 import os
 
 
@@ -24,58 +21,84 @@ def login():
     if not pas:
         print('passwords not loaded')
         return None
-    permissions = vk_api.VkUserPermissions.OFFLINE \
+
+    permissions = vk_api.VkUserPermissions.MESSAGES \
+                | vk_api.VkUserPermissions.OFFLINE \
                 | vk_api.VkUserPermissions.PHOTOS \
                 | vk_api.VkUserPermissions.WALL
+
     vk_session = vk_api.VkApi(
         login=pas['login'],
         scope=permissions,
-        app_id=pas['app_id'],
         password=pas['password'],
         api_version='5.95',
-        client_secret=pas['service_key'])
+        client_secret=pas['service_key'],
+        app_id=pas['app_id'],
+    )
+
     try:
         vk_session.auth(token_only=True)
     except vk_api.AuthError as error_msg:
         print(error_msg)
         return None
+
     return vk_session.get_api()
 
 
-def post_photo(vk, url):
-    r = requests.get(url, stream=True)
-    if r.status_code == 200:
-        with open(MODULE_PATH + 'buffer.jpg', 'wb') as f:
-            r.raw.decode_content = True
-            shutil.copyfileobj(r.raw, f)
-            photo = vk_api.VkUpload(vk).photo(
-                MODULE_PATH + 'buffer.jpg',
-                album_id=257944503,
-                group_id=173831462
-            )
-            img = f'photo-173831462_{photo[0]["id"]}'
-            response = vk.wall.post(owner_id=-173831462, from_group=1, attachments=img)
-            return response
-    return None
+def post_the_cat(vk, cat):
+    url = cat['img_url']
+    discr = cat['discr']
+    cat_id = cat['id']
+
+    raw = imgurcats.download(url)
+    if not raw:
+        print('image not downloaded')
+        return None
+
+    photo = vk_api.VkUpload(vk).photo(
+        photos=raw,
+        album_id=257944503,
+        group_id=173831462,
+        caption=cat_id,
+    )
+
+    response = vk.wall.post(
+        message=discr,
+        owner_id=-173831462,
+        from_group=1,
+        attachments=f'photo-173831462_{photo[0]["id"]}',
+    )
+    if not 'post_id' in response:
+        print('no post_id responsed', response)
+        return None
+
+    return response['post_id']
+
+
+def get_last_id_from_photos(vk):
+    response = vk.photos.get(
+        owner_id=-173831462,
+        album_id=257944503,
+        rev=1,
+        count=1,
+    )
+    if not 'items' in response:
+        print('no items responsed', response)
+        return None
+    return response['items'][0]['text']
 
 
 def post():
-    url = imgurcats.gimme_cat()
-    if url:
-        vk = login()
-        if vk:
-            return post_photo(vk, url)
-    return None
+    vk = login()
+    if not vk:
+        print('can`t login to vk, what`s wrong?')
+        return None
 
+    last_id = get_last_id_from_photos(vk)
 
-def test():
-    url = imgurcats.gimme_cat(test=True)
-    print(f'url: {url}')
-    if url:
-        vk = login()
-        print(f'vk: {vk}')
-        if vk:
-            r = post_photo(vk, url)
-            print(f'response: {r}')
-            return r
-    return None
+    cat = imgurcats.gimme_cat(last_id)
+    if not cat:
+        print('no cats for today, try later')
+        return None
+
+    return post_the_cat(vk, cat)
