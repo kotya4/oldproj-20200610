@@ -1,6 +1,4 @@
-# [![](http://kotya.tk/favicon.ico)](http://kotya.tk) cube
-
----
+# cube
 
 Трехмерный вращающийся куб в консоли (win/linux).
 
