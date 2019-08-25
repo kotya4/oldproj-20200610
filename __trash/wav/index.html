@@ -1,0 +1,73 @@
+<html>
+<head>
+  <title>wav generator</title>
+  <meta charset="utf-8">
+  <link rel="stylesheet" type="text/css" href="www_wav/css/index.css">
+  <script src="www_wav/js/math.min.js"></script> <!-- third-party -->
+  <script src="www_wav/js/storage.js"></script>
+  <script src="www_wav/js/index.js"></script>
+</head>
+<body>
+
+  <div class="flex-wrapper">
+
+    <div class="fieldset player">
+      <div class="fieldset-title">visualizer</div>
+      <div class="canvas-wrapper">
+        <canvas id="canvas"></canvas>
+      </div>
+      <div id="player-wrapper"></div>
+    </div>
+
+  </div>
+
+  <div class="flex-wrapper">
+
+    <div class="fieldset generator">
+      <div class="fieldset-title">generator</div>
+      <br>create_sound [8000 * <span class="spans" id="duration">4</span>] (t + <span class="spans" id="t-offset">0</span>) =><br><br>
+      <div class="textarea">
+        <div class="textarea-editable textarea-highlight" id="textarea-highlight"></div>
+        <div class="textarea-editable text" id="textarea-editable" contenteditable></div>
+      </div>
+      <br><br>
+      <div class="err-area" id="err-area">syntax error :: no error</div>
+      <br>
+      <a href="https://mathjs.org/docs/expressions/syntax.html" target="_blank">syntax help</a>
+
+    </div>
+
+    <div class="controls">
+      <div class="fieldset inputs1">
+        <div class="fieldset-title">controls</div>
+
+        <div class="inputs">
+          duration (in seconds):
+          <input type="number" class="input" placeholder="4" id="input-duration">
+          <br>
+          iterator offset:
+          <input type="number" class="input" placeholder="0" id="input-t-offset">
+          <br>
+          canvas pixel size:
+          <input type="number" class="input" placeholder="1" id="input-pixel_size">
+          <br>
+          canvas max width:
+          <input type="number" class="input" placeholder="1000" id="input-max_width">
+          <br>
+          canvas scaler:
+          <input type="number" class="input" step="0.01" placeholder="1 / 32" id="input-scaler">
+        </div>
+
+        <div class="button" id="bn-generate">Generate</div>
+
+        <br>
+        <br>
+        -- WAV GENERATOR --
+        <a href="https:/vk.com/piturd98">Sluchaynaya Kotya (c) Dec 2018</a>
+
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
