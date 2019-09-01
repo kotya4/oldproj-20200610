@@ -1,4 +1,4 @@
-kotya-web
+kotya-web*
 *.sublime-project
 *.sublime-workspace
 __pycache__/
