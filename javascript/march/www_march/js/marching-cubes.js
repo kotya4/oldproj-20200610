@@ -1,84 +1,64 @@
 /*
- *
+ * Marching cubes
+ * original: https://github.com/BorisTheBrave/mc-dc/blob/a165b326849d8814fb03c963ad33a9faf6cc6dea/marching_cubes_3d.py
  */
-function MarchingCubes(f, adaptive = false) {
-  const adapt = (v0, v1) => {
-    // v0 and v1 are numbers of opposite sign. This returns how far you
-    // need to interpolate from v0 to v1 to get to 0.
-    // assert (v1 > 0) != (v0 > 0), "v0 and v1 do not have opposite sign"
-    if (!((v1 > 0) != (v0 > 0))) throw Error();
-    return adaptive ? ((0 - v0) / (v1 - v0)) : 0.5;
+function MarchingCubes() {
+  const evaluate = (func, x, y, z) => {
+    // Evaluate func on each vertex of the cube
+    const feval = [...Array(8)];
+    for (let i = 0; i < feval.length; ++i) {
+      const vertex = MarchingCubes.VERTICES[i];
+      feval[i] = func(x + vertex[0], y + vertex[1], z + vertex[2]);
+    }
+    return feval;
   }
 
-  const march = (x, y, z) => {
-    // Evaluate f on each vertex of the cube
-    const f_eval = [...Array(8)].fill(0);
+  const get_faces = (feval) => {
+    // Determine which case we are.
+    // literally: sum(2**v for v in range(8) if feval[v] > 0)
+    let casei = 0;
+    if (feval[0] > 0) casei |= 0x1;
+    if (feval[1] > 0) casei |= 0x2;
+    if (feval[2] > 0) casei |= 0x4;
+    if (feval[3] > 0) casei |= 0x8;
+    if (feval[4] > 0) casei |= 0x10;
+    if (feval[5] > 0) casei |= 0x20;
+    if (feval[6] > 0) casei |= 0x40;
+    if (feval[7] > 0) casei |= 0x80;
+    return MarchingCubes.CASES[casei];
+  }
 
-    for (let v = 0; v < 8; ++v) {
-      const v_pos = MarchingCubes.VERTICES[v];
-      f_eval[v] = f(x + v_pos[0], y + v_pos[1], z + v_pos[2]);
-    }
+  const adapt = (a, b) => {
+    // a and b are numbers of opposite sign. This returns
+    // how far you need to interpolate from a to b to get to 0.
+    if (a > 0 === b > 0) throw Error('a and b do not have opposite sign');
+    return (0 - a) / (b - a);
+  }
 
-    // Determine which case we are
-    // sum(2**v for v in range(8) if f_eval[v] > 0)
-    let _case = 0;
-    for (let v = 0; v < 8; ++v) {
-      if (f_eval[v] > 0) {
-        _case += 2**v;
+  const march = (func, x, y, z, adaptive = true) => {
+    const feval = evaluate(func, x, y, z);
+    const faces = get_faces(feval);
+
+    const coordinates = [];
+
+    for (let i = 0; i < faces.length; ++i) {
+      // For each face, find the vertices of that face, and output it.
+      for (let k = 0; k < faces[i].length; ++k) {
+        // Find the two vertices specified by this edge, and interpolate between them.
+        const edgei = faces[i][k];
+        const a = MarchingCubes.EDGES[edgei][0];
+        const b = MarchingCubes.EDGES[edgei][1];
+        const t0 = 1 - (adaptive ? adapt(feval[a], feval[b]) : 0.5);
+        const t1 = 1 - t0;
+        const va = MarchingCubes.VERTICES[a];
+        const vb = MarchingCubes.VERTICES[b];
+        coordinates.push(x + va[0] * t0 + vb[0] * t1);
+        coordinates.push(y + va[1] * t0 + vb[1] * t1);
+        coordinates.push(z + va[2] * t0 + vb[2] * t1);
       }
     }
 
-    // Ok, what faces do we need (in terms of edges)
-    const faces = MarchingCubes.CASES[_case];
-
-    let output_verts = [];
-    const output_tris = [];
-
-    for (let face of faces) {
-      // For each face, find the vertices of that face, and output it.
-      // We make no effort to re-use vertices between multiple faces,
-      // A fancier implementation might do so.
-      const edges = face;
-      // list(map(edge_to_boundary_vertex, edges))
-      const verts = edges.map(edge => {
-        // Returns the vertex in the middle of the specified edge
-        // Find the two vertices specified by this edge, and interpolate between
-        // them according to adapt, as in the 2d case
-        const v0 = MarchingCubes.EDGES[edge][0];
-        const v1 = MarchingCubes.EDGES[edge][1];
-        const f0 = f_eval[v0];
-        const f1 = f_eval[v1];
-
-        const t0 = 1 - adapt(f0, f1);
-        const t1 = 1 - t0;
-
-        const vert_pos0 = MarchingCubes.VERTICES[v0];
-        const vert_pos1 = MarchingCubes.VERTICES[v1];
-
-        //console.log(vert_pos0);
-        //console.log(vert_pos1);
-        //throw Error();
-
-        return {
-          x: x + vert_pos0[0] * t0 + vert_pos1[0] * t1,
-          y: y + vert_pos0[1] * t0 + vert_pos1[1] * t1,
-          z: z + vert_pos0[2] * t0 + vert_pos1[2] * t1,
-        }
-      });
-
-
-
-      const next_vert_index = output_verts.length + 1;
-      const tri = {
-        v1: next_vert_index+0,
-        v2: next_vert_index+1,
-        v3: next_vert_index+2,
-      };
-      output_verts = output_verts.concat(verts);
-      output_tris.push(tri);
-    }
-
-    return { output_verts, output_tris };
+    return coordinates;
   }
 
   return {

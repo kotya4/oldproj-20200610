@@ -64,17 +64,17 @@ function WebGL(screen_width, screen_height, parent) {
 
     void main(void) {
       // w/o light
-      gl_FragColor = v_color;
+      //gl_FragColor = v_color;
 
       // w/o color
-      // gl_FragColor = vec4(vec3(1.0, 1.0, 1.0) * v_light, 1.0);
+      gl_FragColor = vec4(vec3(1.0, 1.0, 1.0) * v_light, 1.0);
 
       // w/o texture
-      // gl_FragColor = vec4(v_color.rgb * v_light, v_color.a);
+      //gl_FragColor = vec4(v_color.rgb * v_light, v_color.a);
 
       // with texture, w/o color
       // vec4 texel_color = texture2D(u_texture, v_texcoord);
-      // gl_FragColor = vec4(texel_color.rgb * v_light, texel_color.a);
+      //gl_FragColor = vec4(texel_color.rgb * v_light, texel_color.a);
     }
   `;
 

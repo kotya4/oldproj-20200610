@@ -108,23 +108,20 @@ window.onload = () => {
     return 2.5 - Math.sqrt(x*x + y*y + z*z);
   }
 
-  const mc = MarchingCubes(f, true);
+  const MC = MarchingCubes();
+
   mesh = {
-    output_verts: [],
-    output_tris: [],
+    coords: [],
   };
+
   for (let x = -3; x <= +3; ++x) {
     for (let y = -3; y <= +3; ++y) {
       for (let z = -3; z <= +3; ++z) {
-        const m = mc.march(x, y, z);
-        const L = mesh.output_verts.length;
-        mesh.output_verts = mesh.output_verts.concat(m.output_verts);
-        mesh.output_tris = mesh.output_tris.concat(m.output_tris.map(f => ({ v1: f.v1 + L, v2: f.v2 + L, v3: f.v3 + L })));
+        const v = MC.march(f, x, y, z, true);
+        mesh.coords = [...mesh.coords, ...v];
       }
     }
   }
-
-  console.log(mesh);
 
   const vbo = {
     coord: [], // 3
@@ -134,47 +131,58 @@ window.onload = () => {
     texcoord: [], // 2
   };
 
-  const verts = mesh.output_verts;
-  const faces = mesh.output_tris;
-
-
-  for (let i = 0; i < verts.length; ++i) {
-    let { x, y, z } = verts[i];
-
-    vbo.coord.push(x);
-    vbo.coord.push(y);
-    vbo.coord.push(z);
-    //if (z < 0) vbo.color = vbo.color.concat([1, 0, 0, 1]);
-    //else vbo.color = vbo.color.concat([1, 1, 1, 1]);
-    vbo.color = vbo.color.concat([...[1, 1, 1].map(e => Math.random()), 1]);
-    vbo.normal = vbo.normal.concat([0, 0, 0]);
-    vbo.texcoord = vbo.texcoord.concat([0, 0]);
-    vbo.indices.push(i);
+  function make_normals(x1, y1, z1, x2, y2, z2, x3, y3, z3) {
+    // source: https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
+    //       p2
+    //  _   ^  \
+    //  U  /    \
+    //    /      \
+    //   /        \
+    //  p1------->p3
+    //       _
+    //       V
+    const Ux = x2 - x1;
+    const Uy = y2 - y1;
+    const Uz = z2 - z1;
+    const Vx = x3 - x1;
+    const Vy = y3 - y1;
+    const Vz = z3 - z1;
+    const Nx = Uy * Vz - Uz * Vy;
+    const Ny = Uz * Vx - Ux * Vz;
+    const Nz = Ux * Vy - Uy * Vx;
+    return [Nx, Ny, Nz];
   }
+
+  const vertices_num = mesh.coords.length / 3;
+
+  vbo.coord = mesh.coords;
+  vbo.indices = [...Array(vertices_num)].map((_, i) => i);
+
+  for (let i = 0; i < vertices_num; ++i) {
+    vbo.color = [...vbo.color, 1, 1, 1, 1];
+    //vbo.color = vbo.color.concat([...[1, 1, 1].map(e => Math.random()), 1]);
+    //vbo.normal = vbo.normal.concat([0, 0, 0]);
+    vbo.texcoord = vbo.texcoord.concat([0, 0]);
+  }
+
+  const faces_num = vertices_num / 3;
+
+  for (let i = 0; i < faces_num; ++i) {
+    const start_i = i * 3 * 3;
+    const normals = make_normals(...mesh.coords.slice(start_i, start_i + 9));
+    vbo.normal.push(normals[0]); // x1
+    vbo.normal.push(normals[1]); // y1
+    vbo.normal.push(normals[2]); // z1
+    vbo.normal.push(normals[0]); // x2
+    vbo.normal.push(normals[1]); // y2
+    vbo.normal.push(normals[2]); // z2
+    vbo.normal.push(normals[0]); // x3
+    vbo.normal.push(normals[1]); // y3
+    vbo.normal.push(normals[2]); // z3
+  }
+
 
   console.log(vbo);
-
-  /*
-  for (let i = 0; i < faces.length; ++i) {
-    const { v1, v2, v3 } = faces[i];
-    [v1, v2, v3].map(v => v - 1).forEach(v => {
-      try {
-        const { x, y, z } = verts[v];
-        //const ioff = vbo.coord.length;
-        vbo.coord = vbo.coord.concat([x, y, z]);
-        vbo.color = vbo.color.concat([...[1, 1, 1].map(e => Math.random()), 1]);
-        vbo.normal = vbo.normal.concat([0, 0, 0]);
-        //vbo.indices = vbo.indices.concat([0 + ioff, 1 + ioff, 2 + ioff]);
-        vbo.texcoord = vbo.texcoord.concat([0, 0]);
-      } catch(e) {
-        console.log({ i, v, face: faces[i], vert: verts[v] });
-        throw e;
-      }
-    });
-  }
-  vbo.indices = [...Array(faces.length * 3)].map((_, i) => i);
-  */
-
 
   webgl.bind_vbo(vbo);
 
@@ -204,7 +212,7 @@ window.onload = () => {
     //mat4.translate(mat_modelview, mat_modelview, [x * model_tscale, y * model_tscale, z * model_tscale]);
 
     // drawing
-    //webgl.draw(mat_projection, mat_modelview, 3 * 85, 0);
+    //webgl.draw(mat_projection, mat_modelview, 3 * 87, 0);
     webgl.draw(mat_projection, mat_modelview, vbo.indices.length);
 
     // pop modelview
@@ -240,6 +248,6 @@ window.onload = () => {
     */
 
     // requesting next frame
-    //requestAnimationFrame(render);
+    requestAnimationFrame(render);
   })();
 }
