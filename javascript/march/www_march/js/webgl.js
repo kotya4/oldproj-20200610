@@ -49,6 +49,7 @@ function WebGL(screen_width, screen_height, parent) {
       v_light = u_ambient_light + (u_directional_light.color * directional_light);
 
       gl_Position = u_view * vec4(a_coord, 1.0);
+      gl_PointSize = 3.0;
     }
   `;
 
@@ -67,10 +68,10 @@ function WebGL(screen_width, screen_height, parent) {
       //gl_FragColor = v_color;
 
       // w/o color
-      gl_FragColor = vec4(vec3(1.0, 1.0, 1.0) * v_light, 1.0);
+      //gl_FragColor = vec4(vec3(1.0, 1.0, 1.0) * v_light, 1.0);
 
       // w/o texture
-      //gl_FragColor = vec4(v_color.rgb * v_light, v_color.a);
+      gl_FragColor = vec4(v_color.rgb * v_light, v_color.a);
 
       // with texture, w/o color
       // vec4 texel_color = texture2D(u_texture, v_texcoord);
@@ -193,7 +194,7 @@ function WebGL(screen_width, screen_height, parent) {
     return bind_element_buffer(vbo.indices);
   }
 
-  function draw(projection, modelview, indices_number = 36, indices_offset = 0) {
+  function draw(projection, modelview, indices_number = 36, indices_offset = 0, type = gl.TRIANGLES) {
     const view = mat4.create();
     mat4.multiply(view, projection, modelview);
 
@@ -208,7 +209,7 @@ function WebGL(screen_width, screen_height, parent) {
     // gl.bindTexture(gl.TEXTURE_2D, texture);
     // gl.uniform1i(u_texture, 0);
 
-    gl.drawElements(gl.TRIANGLES, indices_number, gl.UNSIGNED_SHORT, indices_offset);
+    gl.drawElements(type, indices_number, gl.UNSIGNED_SHORT, indices_offset);
   }
 
   function clear() {
@@ -226,6 +227,19 @@ function WebGL(screen_width, screen_height, parent) {
     gl.uniform3f(u_directional_light.direction, ...normalized);
   }
 
+  // projects 3d coordinates to 2d
+  function to_pos2(pos3, projection, modelview, width, height) {
+    const posT = vec3.create();
+    vec3.transformMat4(posT, pos3, modelview);
+    vec3.transformMat4(posT, posT, projection);
+    posT[0] /= +posT[2];
+    posT[1] /= -posT[2];
+    return [
+      (posT[0] + 1) * (width >> 1),
+      (posT[1] + 1) * (height >> 1),
+    ];
+  }
+
   return {
     gl,
     draw,
@@ -236,6 +250,7 @@ function WebGL(screen_width, screen_height, parent) {
     make_texture,
     set_ambient_light,
     set_directional_light,
+    to_pos2,
   }
 }
 

@@ -61,10 +61,123 @@ function MarchingCubes() {
     return coordinates;
   }
 
+
+
+  const _march = (feval, adaptive = false) => {
+    //const feval = evaluate(func, x, y, z);
+    const faces = get_faces(feval);
+
+    const coordinates = [];
+
+    for (let i = 0; i < faces.length; ++i) {
+      // For each face, find the vertices of that face, and output it.
+      for (let k = 0; k < faces[i].length; ++k) {
+        // Find the two vertices specified by this edge, and interpolate between them.
+        const edgei = faces[i][k];
+        const a = MarchingCubes.EDGES[edgei][0];
+        const b = MarchingCubes.EDGES[edgei][1];
+        const t0 = 1 - (adaptive ? adapt(feval[a], feval[b]) : 0.5);
+        const t1 = 1 - t0;
+        const va = MarchingCubes.VERTICES[a];
+        const vb = MarchingCubes.VERTICES[b];
+        coordinates.push(0 + va[0] * t0 + vb[0] * t1);
+        coordinates.push(0 + va[1] * t0 + vb[1] * t1);
+        coordinates.push(0 + va[2] * t0 + vb[2] * t1);
+      }
+    }
+
+    return coordinates;
+  }
+
   return {
-    march
+    march,
+    _march,
   }
 }
+
+/*
+ *
+ */
+MarchingCubes.make_sphere = function() {
+  // making coords
+  const f = (x, y, z) => 2.5 - Math.sqrt(x * x + y * y + z * z);
+  const MC = MarchingCubes();
+  let coord = [];
+  for (let x = -3; x <= +3; ++x)
+    for (let y = -3; y <= +3; ++y)
+      for (let z = -3; z <= +3; ++z)
+        coord = [...coord, ...MC.march(f, x, y, z, false)];
+
+  // making vbo
+  const vbo = {
+    coord: [], // 3
+    color: [], // 4
+    normal: [], // 3
+    indices: [], // 1
+    texcoord: [], // 2
+  };
+
+  function make_normals(x1, y1, z1, x2, y2, z2, x3, y3, z3) {
+    // source: https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
+    //       p2
+    //  _   ^  \
+    //  U  /    \
+    //    /      \
+    //   /        \
+    //  p1------->p3
+    //       _
+    //       V
+    const Ux = x2 - x1;
+    const Uy = y2 - y1;
+    const Uz = z2 - z1;
+    const Vx = x3 - x1;
+    const Vy = y3 - y1;
+    const Vz = z3 - z1;
+    const Nx = Uy * Vz - Uz * Vy;
+    const Ny = Uz * Vx - Ux * Vz;
+    const Nz = Ux * Vy - Uy * Vx;
+    const Nmag = Math.sqrt(Nx * Nx + Ny * Ny + Nz * Nz);
+    return [Nx / Nmag, Ny / Nmag, Nz / Nmag];
+  }
+
+  const vertices_num = coord.length / 3;
+
+  const colors = [
+    [0, 0, 1, 1],
+    [0, 1, 0, 1],
+    [0, 1, 1, 1],
+    [1, 0, 0, 1],
+    [1, 0, 1, 1],
+    [1, 1, 0, 1],
+    [1, 1, 1, 1],
+  ];
+
+  vbo.coord = coord;
+  vbo.indices = [...Array(vertices_num)].map((_, i) => i);
+  for (let i = 0; i < vertices_num; ++i) {
+    vbo.color = [...vbo.color, ...colors[(~~(i / 3)) % colors.length]];
+    vbo.texcoord = [...vbo.texcoord, 0, 0];
+  }
+
+  for (let i = 0; i < vertices_num / 3; ++i) {
+    const start_i = i * 3 * 3;
+    const normals = make_normals(...coord.slice(start_i, start_i + 9));
+    vbo.normal.push(normals[0]); // x1
+    vbo.normal.push(normals[1]); // y1
+    vbo.normal.push(normals[2]); // z1
+    vbo.normal.push(normals[0]); // x2
+    vbo.normal.push(normals[1]); // y2
+    vbo.normal.push(normals[2]); // z2
+    vbo.normal.push(normals[0]); // x3
+    vbo.normal.push(normals[1]); // y3
+    vbo.normal.push(normals[2]); // z3
+  }
+
+  return vbo;
+}
+/*
+ *
+ */
 
 MarchingCubes.VERTICES = [
   [0, 0, 0],
