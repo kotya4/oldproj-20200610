@@ -49,7 +49,7 @@ window.addEventListener('load', () => {
    * @param {Array} points - "[ { x, y }, ... ]".
    * @param {Array} rect - "[ (0)Left, (1)Right, (2)Top, (3)Bottom ]".
    * @param {Number} depth - Recursive depth.
-   * @returns {Object} Containts position rect and array of branches (1 to 4) wich can contain 'null' (end of tree).
+   * @returns {Object} Containts position rect and array of branches wich can contain 'null' (end of tree).
    */
   function QuadTree(points, rect, depth = 0x2) {
     if (points.length === 0 || --depth < 0) return null;
@@ -101,7 +101,7 @@ window.addEventListener('load', () => {
    * @param {Array} points - "[ { x, y, z }, ... ]".
    * @param {Array} volume - "[ (0)Left, (1)Right, (2)Top, (3)Bottom, (4)Near, (5)Far ]".
    * @param {Number} depth - Recursive depth.
-   * @returns {Object} Containts position rect and array of branches (1 to 4) wich can contain 'null' (end of tree).
+   * @returns {Object} Containts position rect and array of branches wich can contain 'null' (end of tree).
    */
   function OctTree(points, volume, depth = 0x2) {
     if (points.length === 0 || --depth < 0) return null;
