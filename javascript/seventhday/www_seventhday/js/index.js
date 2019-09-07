@@ -114,46 +114,46 @@ window.addEventListener('load', () => {
     const half____z = volume[4] + volume_d / 2;
 
     //                  Left       Right      Top        Bottom     Near       Far
-    const volume_LTF = [volume[0], half____x, volume[2], half____y, half____z, volume[5]]; // left top far
-    const volume_RTF = [half____x, volume[1], volume[2], half____y, half____z, volume[5]]; // right top far
-    const volume_LBF = [volume[0], half____x, half____y, volume[3], half____z, volume[5]]; // left bottom far
-    const volume_RBF = [half____x, volume[1], half____y, volume[3], half____z, volume[5]]; // right bottom far
     const volume_LTN = [volume[0], half____x, volume[2], half____y, volume[4], half____z]; // left top near
     const volume_RTN = [half____x, volume[1], volume[2], half____y, volume[4], half____z]; // right top near
     const volume_LBN = [volume[0], half____x, half____y, volume[3], volume[4], half____z]; // left bottom near
     const volume_RBN = [half____x, volume[1], half____y, volume[3], volume[4], half____z]; // right bottom near
+    const volume_LTF = [volume[0], half____x, volume[2], half____y, half____z, volume[5]]; // left top far
+    const volume_RTF = [half____x, volume[1], volume[2], half____y, half____z, volume[5]]; // right top far
+    const volume_LBF = [volume[0], half____x, half____y, volume[3], half____z, volume[5]]; // left bottom far
+    const volume_RBF = [half____x, volume[1], half____y, volume[3], half____z, volume[5]]; // right bottom far
 
-    const points_LTF = [];
-    const points_RTF = [];
-    const points_LBF = [];
-    const points_RBF = [];
     const points_LTN = [];
     const points_RTN = [];
     const points_LBN = [];
     const points_RBN = [];
+    const points_LTF = [];
+    const points_RTF = [];
+    const points_LBF = [];
+    const points_RBF = [];
 
     for (let point of points) {
-      if (is_point_in_volume(point, volume_LTF)) points_LTF.push(point);
-      if (is_point_in_volume(point, volume_RTF)) points_RTF.push(point);
-      if (is_point_in_volume(point, volume_LBF)) points_LBF.push(point);
-      if (is_point_in_volume(point, volume_RBF)) points_RBF.push(point);
       if (is_point_in_volume(point, volume_LTN)) points_LTN.push(point);
       if (is_point_in_volume(point, volume_RTN)) points_RTN.push(point);
       if (is_point_in_volume(point, volume_LBN)) points_LBN.push(point);
       if (is_point_in_volume(point, volume_RBN)) points_RBN.push(point);
+      if (is_point_in_volume(point, volume_LTF)) points_LTF.push(point);
+      if (is_point_in_volume(point, volume_RTF)) points_RTF.push(point);
+      if (is_point_in_volume(point, volume_LBF)) points_LBF.push(point);
+      if (is_point_in_volume(point, volume_RBF)) points_RBF.push(point);
     }
 
     return {
       rect,
       brunches: [
-        OctTree(points_LTF, volume_LTF, depth),
-        OctTree(points_RTF, volume_RTF, depth),
-        OctTree(points_LBF, volume_LBF, depth),
-        OctTree(points_RBF, volume_RBF, depth),
         OctTree(points_LTN, volume_LTN, depth),
         OctTree(points_RTN, volume_RTN, depth),
         OctTree(points_LBN, volume_LBN, depth),
         OctTree(points_RBN, volume_RBN, depth),
+        OctTree(points_LTF, volume_LTF, depth),
+        OctTree(points_RTF, volume_RTF, depth),
+        OctTree(points_LBF, volume_LBF, depth),
+        OctTree(points_RBF, volume_RBF, depth),
       ],
     }
   }
