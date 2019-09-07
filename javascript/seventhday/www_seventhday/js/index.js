@@ -43,7 +43,6 @@ window.addEventListener('load', () => {
     return rect[0] <= point.x && point.x <= rect[2] && rect[1] <= point.y && point.y <= rect[3];
   }
 
-
   /**
    * Recursively generates quadtree.
    * @param {Array} points - "[ { x, y }, ... ]".
@@ -90,13 +89,14 @@ window.addEventListener('load', () => {
 
   // Tests is point in volume or not.
   function is_point_in_volume(point, volume) {
-    return rect[0] <= point.x && point.x <= rect[2] && rect[1] <= point.y && point.y <= rect[3];
+    return volume[0] <= point.x && point.x <= volume[1]
+        && volume[2] <= point.y && point.y <= volume[3]
+        && volume[4] <= point.z && point.z <= volume[5];
   }
-
 
   /**
    * Recursively generates octtree.
-   * @param {Array} points - "[ { x, y }, ... ]".
+   * @param {Array} points - "[ { x, y, z }, ... ]".
    * @param {Array} volume - "[ (0)Left, (1)Right, (2)Top, (3)Bottom, (4)Near, (5)Far ]".
    * @param {Number} depth - Recursive depth.
    * @returns {Object} Containts position rect and array of branches (1 to 4) wich can contain 'null' (end of tree).
