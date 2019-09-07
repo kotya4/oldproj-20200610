@@ -109,19 +109,19 @@ window.addEventListener('load', () => {
     const volume_w = volume[1] - volume[0];
     const volume_h = volume[3] - volume[2];
     const volume_d = volume[5] - volume[4];
-    const half___x = volume[0] + volume_w / 2;
-    const half___y = volume[2] + volume_h / 2;
-    const half___z = volume[4] + volume_d / 2;
+    const half____x = volume[0] + volume_w / 2;
+    const half____y = volume[2] + volume_h / 2;
+    const half____z = volume[4] + volume_d / 2;
 
-    //                Left     Right    Top      Bottom   Near     Far
-    const volume_LTF = [volume[0], half___x, volume[2], half___y, half___z, volume[5]]; // left top far
-    const volume_RTF = [half___x, volume[1], volume[2], half___y, half___z, volume[5]]; // right top far
-    const volume_LBF = [volume[0], half___x, half___y, volume[3], half___z, volume[5]]; // left bottom far
-    const volume_RBF = [half___x, volume[1], half___y, volume[3], half___z, volume[5]]; // right bottom far
-    const volume_LTN = [volume[0], half___x, volume[2], half___y, volume[4], half___z]; // left top near
-    const volume_RTN = [half___x, volume[1], volume[2], half___y, volume[4], half___z]; // right top near
-    const volume_LBN = [volume[0], half___x, half___y, volume[3], volume[4], half___z]; // left bottom near
-    const volume_RBN = [half___x, volume[1], half___y, volume[3], volume[4], half___z]; // right bottom near
+    //                  Left       Right      Top        Bottom     Near       Far
+    const volume_LTF = [volume[0], half____x, volume[2], half____y, half____z, volume[5]]; // left top far
+    const volume_RTF = [half____x, volume[1], volume[2], half____y, half____z, volume[5]]; // right top far
+    const volume_LBF = [volume[0], half____x, half____y, volume[3], half____z, volume[5]]; // left bottom far
+    const volume_RBF = [half____x, volume[1], half____y, volume[3], half____z, volume[5]]; // right bottom far
+    const volume_LTN = [volume[0], half____x, volume[2], half____y, volume[4], half____z]; // left top near
+    const volume_RTN = [half____x, volume[1], volume[2], half____y, volume[4], half____z]; // right top near
+    const volume_LBN = [volume[0], half____x, half____y, volume[3], volume[4], half____z]; // left bottom near
+    const volume_RBN = [half____x, volume[1], half____y, volume[3], volume[4], half____z]; // right bottom near
 
     const points_LTF = [];
     const points_RTF = [];
