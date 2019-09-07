@@ -7,7 +7,7 @@ window.addEventListener('load', () => {
 
 
   const points = [...Array(8)].map(_ => ({ x: Math.random() * 200 + 50, y: Math.random() * 200 + 50 }));
-  const qtree = QuadTree(points, [0, 0, ctx.canvas.width, ctx.canvas.height], 0x6);
+  const qtree = QuadTree(points, [0, ctx.canvas.width, 0, ctx.canvas.height], 0x4);
   console.log(JSON.stringify(qtree, null, 2));
 
 
@@ -15,7 +15,7 @@ window.addEventListener('load', () => {
   ctx.lineWidth = 1;
   (function draw_qtree(qtree) {
     if (qtree) {
-      const rect = [qtree.rect[0], qtree.rect[1], qtree.rect[2] - qtree.rect[0], qtree.rect[3] - qtree.rect[1]];
+      const rect = [qtree.rect[0], qtree.rect[2], qtree.rect[1] - qtree.rect[0], qtree.rect[3] - qtree.rect[2]];
 
       ctx.fillStyle = `rgba(${~~(Math.random() * 256)}, ${~~(Math.random() * 256)}, ${~~(Math.random() * 256)}, 0.5)`;
       ctx.fillRect(...rect);
@@ -40,48 +40,50 @@ window.addEventListener('load', () => {
 
   // Tests is point in rect or not.
   function is_point_in_rect(point, rect) {
-    return rect[0] <= point.x && point.x <= rect[2] && rect[1] <= point.y && point.y <= rect[3];
+    return rect[0] <= point.x && point.x <= rect[1]
+        && rect[2] <= point.y && point.y <= rect[3];
   }
 
   /**
    * Recursively generates quadtree.
    * @param {Array} points - "[ { x, y }, ... ]".
-   * @param {Array} rect - "[ (0)Left, (1)Top, (2)Right, (3)Bottom ]".
+   * @param {Array} rect - "[ (0)Left, (1)Right, (2)Top, (3)Bottom ]".
    * @param {Number} depth - Recursive depth.
    * @returns {Object} Containts position rect and array of branches (1 to 4) wich can contain 'null' (end of tree).
    */
   function QuadTree(points, rect, depth = 0x2) {
     if (points.length === 0 || --depth < 0) return null;
 
-    const rect_w = rect[2] - rect[0];
-    const rect_h = rect[3] - rect[1];
-    const half_x = rect[0] + rect_w / 2;
-    const half_y = rect[1] + rect_h / 2;
+    const rect_w = rect[1] - rect[0];
+    const rect_h = rect[3] - rect[2];
+    const half__x = rect[0] + rect_w / 2;
+    const half__y = rect[2] + rect_h / 2;
 
-    //               Left     Top      Right    Bottom
-    const rect_tl = [rect[0], rect[1], half_x , half_y ]; // top left
-    const rect_tr = [half_x , rect[1], rect[2], half_y ]; // top right
-    const rect_bl = [rect[0], half_y , half_x , rect[3]]; // bottom left
-    const rect_br = [half_x , half_y , rect[2], rect[3]]; // bottom right
+    //               Left     Right    Top      Bottom
+    const rect_LT = [rect[0], half__x, rect[2], half__y]; // left top
+    const rect_RT = [half__x, rect[1], rect[2], half__y]; // right top
+    const rect_LB = [rect[0], half__x, half__y, rect[3]]; // left bottom
+    const rect_RB = [half__x, rect[1], half__y, rect[3]]; // right bottom
 
-    const points_tl = [];
-    const points_tr = [];
-    const points_bl = [];
-    const points_br = [];
+
+    const points_LT = [];
+    const points_RT = [];
+    const points_LB = [];
+    const points_RB = [];
     for (let point of points) {
-      if (is_point_in_rect(point, rect_tl)) points_tl.push(point);
-      if (is_point_in_rect(point, rect_tr)) points_tr.push(point);
-      if (is_point_in_rect(point, rect_bl)) points_bl.push(point);
-      if (is_point_in_rect(point, rect_br)) points_br.push(point);
+      if (is_point_in_rect(point, rect_LT)) points_LT.push(point);
+      if (is_point_in_rect(point, rect_RT)) points_RT.push(point);
+      if (is_point_in_rect(point, rect_LB)) points_LB.push(point);
+      if (is_point_in_rect(point, rect_RB)) points_RB.push(point);
     }
 
     return {
       rect,
       brunches: [
-        QuadTree(points_tl, rect_tl, depth),
-        QuadTree(points_tr, rect_tr, depth),
-        QuadTree(points_bl, rect_bl, depth),
-        QuadTree(points_br, rect_br, depth),
+        QuadTree(points_LT, rect_LT, depth),
+        QuadTree(points_RT, rect_RT, depth),
+        QuadTree(points_LB, rect_LB, depth),
+        QuadTree(points_RB, rect_RB, depth),
       ],
     }
   }
