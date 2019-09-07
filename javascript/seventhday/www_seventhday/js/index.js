@@ -101,7 +101,7 @@ window.addEventListener('load', () => {
    * @param {Array} points - "[ { x, y, z }, ... ]".
    * @param {Array} volume - "[ (0)Left, (1)Right, (2)Top, (3)Bottom, (4)Near, (5)Far ]".
    * @param {Number} depth - Recursive depth.
-   * @returns {Object} Containts position rect and array of branches wich can contain 'null' (end of tree).
+   * @returns {Object} Containts position volume and array of branches wich can contain 'null' (end of tree).
    */
   function OctTree(points, volume, depth = 0x2) {
     if (points.length === 0 || --depth < 0) return null;
@@ -144,7 +144,7 @@ window.addEventListener('load', () => {
     }
 
     return {
-      rect,
+      volume,
       brunches: [
         OctTree(points_LTN, volume_LTN, depth),
         OctTree(points_RTN, volume_RTN, depth),
