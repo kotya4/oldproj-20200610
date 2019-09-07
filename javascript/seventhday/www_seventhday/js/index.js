@@ -49,7 +49,7 @@ window.addEventListener('load', () => {
    * @param {Array} points - "[ { x, y }, ... ]".
    * @param {Array} rect - "[ (0)Left, (1)Top, (2)Right, (3)Bottom ]".
    * @param {Number} depth - Recursive depth.
-   * @returns {Object} Pointer to the 'points' array, or array of branches (1 to 4).
+   * @returns {Object} Containts position rect and array of branches (1 to 4) wich can contain 'null' (end of tree).
    */
   function QuadTree(points, rect, depth = 0x2) {
     if (points.length === 0 || --depth < 0) return null;
@@ -86,6 +86,76 @@ window.addEventListener('load', () => {
       ],
     }
   }
+
+
+  // Tests is point in volume or not.
+  function is_point_in_volume(point, volume) {
+    return rect[0] <= point.x && point.x <= rect[2] && rect[1] <= point.y && point.y <= rect[3];
+  }
+
+
+  /**
+   * Recursively generates octtree.
+   * @param {Array} points - "[ { x, y }, ... ]".
+   * @param {Array} volume - "[ (0)Left, (1)Right, (2)Top, (3)Bottom, (4)Near, (5)Far ]".
+   * @param {Number} depth - Recursive depth.
+   * @returns {Object} Containts position rect and array of branches (1 to 4) wich can contain 'null' (end of tree).
+   */
+  function OctTree(points, volume, depth = 0x2) {
+    if (points.length === 0 || --depth < 0) return null;
+
+    const volume_w = volume[1] - volume[0];
+    const volume_h = volume[3] - volume[2];
+    const volume_d = volume[5] - volume[4];
+    const half___x = volume[0] + volume_w / 2;
+    const half___y = volume[2] + volume_h / 2;
+    const half___z = volume[4] + volume_d / 2;
+
+    //                Left     Right    Top      Bottom   Near     Far
+    const volume_LTF = [volume[0], half___x, volume[2], half___y, half___z, volume[5]]; // left top far
+    const volume_RTF = [half___x, volume[1], volume[2], half___y, half___z, volume[5]]; // right top far
+    const volume_LBF = [volume[0], half___x, half___y, volume[3], half___z, volume[5]]; // left bottom far
+    const volume_RBF = [half___x, volume[1], half___y, volume[3], half___z, volume[5]]; // right bottom far
+    const volume_LTN = [volume[0], half___x, volume[2], half___y, volume[4], half___z]; // left top near
+    const volume_RTN = [half___x, volume[1], volume[2], half___y, volume[4], half___z]; // right top near
+    const volume_LBN = [volume[0], half___x, half___y, volume[3], volume[4], half___z]; // left bottom near
+    const volume_RBN = [half___x, volume[1], half___y, volume[3], volume[4], half___z]; // right bottom near
+
+    const points_LTF = [];
+    const points_RTF = [];
+    const points_LBF = [];
+    const points_RBF = [];
+    const points_LTN = [];
+    const points_RTN = [];
+    const points_LBN = [];
+    const points_RBN = [];
+
+    for (let point of points) {
+      if (is_point_in_volume(point, volume_LTF)) points_LTF.push(point);
+      if (is_point_in_volume(point, volume_RTF)) points_RTF.push(point);
+      if (is_point_in_volume(point, volume_LBF)) points_LBF.push(point);
+      if (is_point_in_volume(point, volume_RBF)) points_RBF.push(point);
+      if (is_point_in_volume(point, volume_LTN)) points_LTN.push(point);
+      if (is_point_in_volume(point, volume_RTN)) points_RTN.push(point);
+      if (is_point_in_volume(point, volume_LBN)) points_LBN.push(point);
+      if (is_point_in_volume(point, volume_RBN)) points_RBN.push(point);
+    }
+
+    return {
+      rect,
+      brunches: [
+        OctTree(points_LTF, volume_LTF, depth),
+        OctTree(points_RTF, volume_RTF, depth),
+        OctTree(points_LBF, volume_LBF, depth),
+        OctTree(points_RBF, volume_RBF, depth),
+        OctTree(points_LTN, volume_LTN, depth),
+        OctTree(points_RTN, volume_RTN, depth),
+        OctTree(points_LBN, volume_LBN, depth),
+        OctTree(points_RBN, volume_RBN, depth),
+      ],
+    }
+  }
+
 
 });
 
