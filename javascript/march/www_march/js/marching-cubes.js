@@ -61,37 +61,8 @@ function MarchingCubes() {
     return coordinates;
   }
 
-
-
-  const _march = (feval, adaptive = false) => {
-    //const feval = evaluate(func, x, y, z);
-    const faces = get_faces(feval);
-
-    const coordinates = [];
-
-    for (let i = 0; i < faces.length; ++i) {
-      // For each face, find the vertices of that face, and output it.
-      for (let k = 0; k < faces[i].length; ++k) {
-        // Find the two vertices specified by this edge, and interpolate between them.
-        const edgei = faces[i][k];
-        const a = MarchingCubes.EDGES[edgei][0];
-        const b = MarchingCubes.EDGES[edgei][1];
-        const t0 = 1 - (adaptive ? adapt(feval[a], feval[b]) : 0.5);
-        const t1 = 1 - t0;
-        const va = MarchingCubes.VERTICES[a];
-        const vb = MarchingCubes.VERTICES[b];
-        coordinates.push(0 + va[0] * t0 + vb[0] * t1);
-        coordinates.push(0 + va[1] * t0 + vb[1] * t1);
-        coordinates.push(0 + va[2] * t0 + vb[2] * t1);
-      }
-    }
-
-    return coordinates;
-  }
-
   return {
     march,
-    _march,
   }
 }
 
@@ -99,25 +70,7 @@ function MarchingCubes() {
  *
  */
 MarchingCubes.make_sphere = function() {
-  // making coords
-  const f = (x, y, z) => 2.5 - Math.sqrt(x * x + y * y + z * z);
-  const MC = MarchingCubes();
-  let coord = [];
-  for (let x = -3; x <= +3; ++x)
-    for (let y = -3; y <= +3; ++y)
-      for (let z = -3; z <= +3; ++z)
-        coord = [...coord, ...MC.march(f, x, y, z, false)];
-
-  // making vbo
-  const vbo = {
-    coord: [], // 3
-    color: [], // 4
-    normal: [], // 3
-    indices: [], // 1
-    texcoord: [], // 2
-  };
-
-  function make_normals(x1, y1, z1, x2, y2, z2, x3, y3, z3) {
+  function make_face_normal(x1, y1, z1, x2, y2, z2, x3, y3, z3) {
     // source: https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
     //       p2
     //  _   ^  \
@@ -140,38 +93,173 @@ MarchingCubes.make_sphere = function() {
     return [Nx / Nmag, Ny / Nmag, Nz / Nmag];
   }
 
-  const vertices_num = coord.length / 3;
-
-  const colors = [
-    [0, 0, 1, 1],
-    [0, 1, 0, 1],
-    [0, 1, 1, 1],
-    [1, 0, 0, 1],
-    [1, 0, 1, 1],
-    [1, 1, 0, 1],
-    [1, 1, 1, 1],
-  ];
-
-  vbo.coord = coord;
-  vbo.indices = [...Array(vertices_num)].map((_, i) => i);
-  for (let i = 0; i < vertices_num; ++i) {
-    vbo.color = [...vbo.color, ...colors[(~~(i / 3)) % colors.length]];
-    vbo.texcoord = [...vbo.texcoord, 0, 0];
+  function compare_floats(a, b, eps = 0) {
+    return a - eps <= b && b <= a + eps;
   }
 
-  for (let i = 0; i < vertices_num / 3; ++i) {
-    const start_i = i * 3 * 3;
-    const normals = make_normals(...coord.slice(start_i, start_i + 9));
-    vbo.normal.push(normals[0]); // x1
-    vbo.normal.push(normals[1]); // y1
-    vbo.normal.push(normals[2]); // z1
-    vbo.normal.push(normals[0]); // x2
-    vbo.normal.push(normals[1]); // y2
-    vbo.normal.push(normals[2]); // z2
-    vbo.normal.push(normals[0]); // x3
-    vbo.normal.push(normals[1]); // y3
-    vbo.normal.push(normals[2]); // z3
+  // initializes marching cube
+  const f = (x, y, z) => 2.5 - Math.sqrt(x * x + y * y + z * z);
+  const MC = MarchingCubes();
+
+  const coords  = [];
+  const normals = [];
+  const planars = []; // contains arrays of neighbor faces with same normals
+
+  // marching cubes number
+  const WIDTH  = 7;
+  const HEIGHT = 7;
+  const DEPTH  = 7;
+
+  // converts volume coordinates into array index
+  const get_cube_index = (x, y, z) => {
+    x = (WIDTH  + x) % WIDTH;
+    y = (HEIGHT + y) % HEIGHT;
+    z = (DEPTH  + z) % DEPTH;
+    return z + y * DEPTH + x * DEPTH * HEIGHT;
   }
+
+  // marching
+  for (let x = 0; x < WIDTH; ++x)
+    for (let y = 0; y < HEIGHT; ++y)
+      for (let z = 0; z < DEPTH; ++z)
+  {
+    // shift scene position
+    const _x = x - (WIDTH  >> 1);
+    const _y = y - (HEIGHT >> 1);
+    const _z = z - (DEPTH  >> 1);
+
+    // get all face coordinates of marched cube
+    const cube_coords = MC.march(f, _x, _y, _z, true);
+
+    // filling 'coords'
+    coords.push(...cube_coords);
+
+    // filling 'normals' and creating face-objects
+    const faces = [];
+    for (let i = 0; i < cube_coords.length; ) {
+      const face_coords = [
+        cube_coords[i++], cube_coords[i++], cube_coords[i++], // vertex 1
+        cube_coords[i++], cube_coords[i++], cube_coords[i++], // vertex 2
+        cube_coords[i++], cube_coords[i++], cube_coords[i++], // vertex 3
+      ];
+      const face_normal = make_face_normal(...face_coords);
+      normals.push(...face_normal);
+      normals.push(...face_normal);
+      normals.push(...face_normal);
+      faces.push({
+        coords: face_coords,
+        normal: face_normal,
+      });
+    }
+
+    // filling 'planars'
+    for (let face of faces) {
+      // search for planars near current face with same normal
+      let is_same_position = false; // indicates that face's 'cube_position' same as planar's
+      let is_planar_found = false;
+      let planar = null;
+      for (planar of planars) {
+        let is_same_normal = compare_floats(planar.normal[0], face.normal[0])
+                          && compare_floats(planar.normal[1], face.normal[1])
+                          && compare_floats(planar.normal[2], face.normal[2]);
+        if (!is_same_normal) continue; // normals are not the same
+
+        let is_near_to_planar = false;
+        L__search_positions: for (let position of planar.cube_positions) {
+          // searching volume 3x3x3
+          for (let xx = position.x - 1; xx <= position.x + 1; ++xx)
+            for (let yy = position.y - 1; yy <= position.y + 1; ++yy)
+              for (let zz = position.z - 1; zz <= position.z + 1; ++zz)
+          {
+            // main cube corners are glued
+            const _xx = (WIDTH  + xx) % WIDTH;
+            const _yy = (HEIGHT + yy) % HEIGHT;
+            const _zz = (DEPTH  + zz) % DEPTH;
+            if (x === _xx && y === _yy && z === _zz) {
+              is_same_position = position.x === x
+                              && position.y === y
+                              && position.z === z;
+              is_near_to_planar = true;
+              break L__search_positions;
+            }
+          }
+        }
+        if (!is_near_to_planar) continue; // face is not near to planar
+
+        // TIP: Нужно ли проверять фейсы с одинаковыми нормалями
+        //      внутри объема 3х3х3 на соприкосновение друг с другом
+        //      или же разность нормалей сама по себе определяет это?
+
+        // planar was found
+        is_planar_found = true;
+        break;
+      }
+
+      // saving face into founded planar
+      if (is_planar_found) {
+        planar.faces.push(face);
+        if (!is_same_position)
+          planar.cube_positions.push({ x, y, z });
+        continue;
+      }
+
+      // no planar was found, so make new planar
+      planars.push({
+        faces: [face],                  // face itself
+        normal: face.normal,            // all faces have same normal
+        cube_positions: [{ x, y, z }],  // face's cube coordinates
+      });
+    }
+  }
+
+  console.log(planars);
+
+  // making vbo
+
+  const vbo = {
+    coord: [], // 3
+    color: [], // 4
+    normal: [], // 3
+    indices: [], // 1
+    texcoord: [], // 2
+  };
+
+  for (let i = 0; i < planars.length; ++i) {
+    const { faces, normal } = planars[i];
+    const color = [Math.random(), Math.random(), Math.random(), 1];
+
+    for (let face of faces) {
+      const { coords } = face;
+      vbo.coord.push(...coords);
+      vbo.color.push(...color, ...color, ...color);
+      vbo.normal.push(...normal, ...normal, ...normal);
+      vbo.indices.push(vbo.indices.length);
+      vbo.indices.push(vbo.indices.length);
+      vbo.indices.push(vbo.indices.length);
+      vbo.texcoord.push(0, 0, 0, 0, 0, 0);
+    }
+
+  }
+
+  // const colors = [
+  //   [0, 0, 1, 1],
+  //   [0, 1, 0, 1],
+  //   [0, 1, 1, 1],
+  //   [1, 0, 0, 1],
+  //   [1, 0, 1, 1],
+  //   [1, 1, 0, 1],
+  //   [1, 1, 1, 1],
+  // ];
+
+  // const vnum = ~~(coords.length / 3);
+
+  // const vbo = {
+  //   coord: coords, // 3
+  //   color: [...Array(vnum)].map((_, i) => colors[~~(i / 3) % colors.length]).flat(), // 4
+  //   normal: normals, // 3
+  //   indices: [...Array(vnum)].map((_, i) => i), // 1
+  //   texcoord: [...Array(vnum)].map((_, i) => [0, 0]).flat(), // 2
+  // };
 
   return vbo;
 }

@@ -62,8 +62,6 @@ window.onload = () => {
   const mesh_vbo = MarchingCubes.make_sphere();
 
 
-
-
   // start rendering
   let old_timestamp = 0;
   (function render(timestamp = 0) {
