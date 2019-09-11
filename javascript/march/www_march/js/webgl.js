@@ -227,6 +227,9 @@ function WebGL(screen_width, screen_height, parent) {
     gl.uniform3f(u_directional_light.direction, ...normalized);
   }
 
+  // TODO: может быть сделать специальный класс для функций, не
+  //       общающихся напрямую с контекстом опенгл?
+
   // projects 3d coordinates to 2d
   function to_pos2(pos3, projection, modelview, width, height) {
     const posT = vec3.create();
@@ -253,6 +256,32 @@ function WebGL(screen_width, screen_height, parent) {
     to_pos2,
   }
 }
+
+
+// creates face normal
+WebGL.create_face_normal = (x1, y1, z1, x2, y2, z2, x3, y3, z3) => {
+  // source: https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
+  //       p2
+  //  _   ^  \
+  //  U  /    \
+  //    /      \
+  //   /        \
+  //  p1------->p3
+  //       _
+  //       V
+  const Ux = x2 - x1;
+  const Uy = y2 - y1;
+  const Uz = z2 - z1;
+  const Vx = x3 - x1;
+  const Vy = y3 - y1;
+  const Vz = z3 - z1;
+  const Nx = Uy * Vz - Uz * Vy;
+  const Ny = Uz * Vx - Ux * Vz;
+  const Nz = Ux * Vy - Uy * Vx;
+  const Nmag = Math.sqrt(Nx * Nx + Ny * Ny + Nz * Nz);
+  return [Nx / Nmag, Ny / Nmag, Nz / Nmag];
+}
+
 
 WebGL.vbo_cube = () => {
   /*
@@ -323,6 +352,7 @@ WebGL.vbo_cube = () => {
   }
 }
 
+// TODO: do not working, see index.js instead
 WebGL.demo = () => {
   const { mat4 } = glMatrix;
 

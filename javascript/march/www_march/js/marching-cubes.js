@@ -70,16 +70,8 @@ function MarchingCubes() {
  *
  */
 MarchingCubes.make_sphere = function() {
+  // REMOVE: USE WebGL.create_face_normal instead
   function make_face_normal(x1, y1, z1, x2, y2, z2, x3, y3, z3) {
-    // source: https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
-    //       p2
-    //  _   ^  \
-    //  U  /    \
-    //    /      \
-    //   /        \
-    //  p1------->p3
-    //       _
-    //       V
     const Ux = x2 - x1;
     const Uy = y2 - y1;
     const Uz = z2 - z1;
@@ -111,12 +103,12 @@ MarchingCubes.make_sphere = function() {
   const DEPTH  = 7;
 
   // converts volume coordinates into array index
-  const get_cube_index = (x, y, z) => {
-    x = (WIDTH  + x) % WIDTH;
-    y = (HEIGHT + y) % HEIGHT;
-    z = (DEPTH  + z) % DEPTH;
-    return z + y * DEPTH + x * DEPTH * HEIGHT;
-  }
+  // const get_cube_index = (x, y, z) => {
+  //   x = (WIDTH  + x) % WIDTH;
+  //   y = (HEIGHT + y) % HEIGHT;
+  //   z = (DEPTH  + z) % DEPTH;
+  //   return z + y * DEPTH + x * DEPTH * HEIGHT;
+  // }
 
   // marching
   for (let x = 0; x < WIDTH; ++x)
@@ -179,7 +171,7 @@ MarchingCubes.make_sphere = function() {
         //       кубов. Тогда проверка на вхождение будет быстрой, а при обнаружении вхождения
         //       можно запускать цикл 3х3х3 с центром вхождения, чтобы дополнить недостающие позиции.
         //       А? А? А? мэ....
-        
+
         let is_near_to_planar = false;
         L__search_positions: for (let position of planar.cube_positions) {
           // searching volume 3x3x3

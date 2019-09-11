@@ -98,6 +98,6 @@ window.onload = () => {
     matstack.pop(mat_modelview);
 
     // request next frame
-    requestAnimationFrame(render);
+    //requestAnimationFrame(render);
   })();
 }
