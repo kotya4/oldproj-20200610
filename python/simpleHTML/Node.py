@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
-from html.parser import HTMLParser
 
-
-class SimpleNode:
+class Node:
     def __init__(self, name, parent = None, attrs = None, data = None):
         self.name = name
         self.data = data
@@ -34,23 +32,3 @@ class SimpleNode:
                     continue
             pseudo.nodes.append(node)
         return pseudo
-
-
-class SimpleHTMLParser(HTMLParser):
-    def __init__(self):
-        HTMLParser.__init__(self)
-        self.global_node = SimpleNode(name='global')
-        self.curr = self.global_node
-
-    def handle_starttag(self, tag, attrs):
-        node = SimpleNode(name=tag, parent=self.curr, attrs=attrs)
-        self.curr.nodes.append(node)
-        self.curr = node
-
-    def handle_endtag(self, tag):
-        if self.curr.name == tag:
-            self.curr = self.curr.parent
-        # TODO: raise error if tag not match
-
-    def handle_data(self, data):
-        self.curr.nodes.append(SimpleNode(name='data', parent=self.curr, data=data))

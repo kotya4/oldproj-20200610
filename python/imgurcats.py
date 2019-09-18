@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-from simplehtmlparser import SimpleHTMLParser
+import simpleHTML.Parser
 import requests
 import re
 
 
-def parse_post_node(node):
+def parse_node(node):
     # unpacking post id
     # id = [a[1] for a in node.attrs if a[0] == 'id'][0]
 
@@ -30,31 +30,37 @@ def parse_post_node(node):
     }
 
 
-def steal_posts():
+def parse_page():
+    result = {
+        'err': { 'code': 0, 'msg': 'no errors' },
+        'posts': [],
+    }
+
     r = requests.get('https://imgur.com/r/cats/')
     if r.status_code != requests.codes.ok:
-        print(f'imgur server sent status {r.status_code}')
-        return None
+        result['err'] = { 'code': 1, 'msg': f'imgur server sent status {r.status_code}' }
+        return result
 
     # начало контейнера, содержащего загруженные посты
     start_str = '<div class="posts sub-gallery br5 first-child">'
     start_i = r.text.find(start_str)
     if start_i == -1:
-        print('imgur page has no "first-child"-dom')
-        return None
+        result['err'] = { 'code': 2, 'msg': 'imgur page has no "first-child"-dom' }
+        return result
     start_i += len(start_str)
 
     # последний элемент контейнера, дальше загруженных постов нет
     end_i = r.text.find('<div class="clear"></div>', start_i)
     if end_i == -1:
-        print('imgur page has no "clear"-dom')
-        return None
+        result['err'] = { 'code': 3, 'msg': 'imgur page has no "clear"-dom' }
+        return result
 
     # парсим выдернутые контейнеры
-    parser = SimpleHTMLParser()
+    parser = simpleHTML.Parser()
     parser.feed(r.text[start_i:end_i])
     nodes = parser.global_node.filter_by(name='div', attr=('class', 'post')).nodes
-    return [parse_post_node(node) for node in nodes]
+    result['posts'] = [parse_node(node) for node in nodes]
+    return result
 
 
 def remove_old_posts(posts, last_id):
@@ -65,23 +71,22 @@ def remove_old_posts(posts, last_id):
     return posts
 
 
-def gimme_all_the_cats(last_id = None):
-    posts = steal_posts()
-    posts = remove_old_posts(posts, last_id)
-    return posts
+def gimme_cats(last_id = None):
+    result = parse_page()
+    result['posts'] = remove_old_posts(result['posts'], last_id)
+    return result
 
 
-def gimme_cat(last_id = None):
-    posts = gimme_all_the_cats(last_id)
-    return posts[-1] if posts else None
-
-
-def download(url):
+def download_from_url(url):
+    result = {
+        'err': { 'code': 0, 'msg': 'no errors' },
+        'raw': None,
+    }
     r = requests.get(url, stream=True)
     if r.status_code != 200:
-        print(f'downloading {url} failed with code {r.status_code}')
-        return None
+        result['err'] = { 'code': r.status_code, 'msg': 'downloading {url} failed with code {r.status_code}' }
+        return result
+    result['raw'] = r.raw
     if r.history:
-        print('redirection, cancel posting')
-        return None
-    return r.raw
+        result['err'] = { 'code': 302, 'msg': 'redirection' }
+    return result
