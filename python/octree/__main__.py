@@ -44,7 +44,7 @@ def prepare_pygame(width=300, height=300):
         pygame.draw.circle(screen, color, center, radius)
 
     def project(normal):
-        return (int(normal[0] * width), int(normal[1] * height))
+        return list(map(lambda e: int(e[1] * height if e[0] & 1 else e[1] * width), enumerate(normal)))
 
     return SimpleNamespace(
         randcolor=randcolor,
@@ -81,7 +81,7 @@ def main():
     def render():
         ctx.clear()
         draw_quadtree(quadtree.raw)
-        for point in points: ctx.circle(ctx.project(point), 2)
+        for point in points: ctx.circle(ctx.project(point[:2]), 2)
         ctx.flush()
 
     render()
