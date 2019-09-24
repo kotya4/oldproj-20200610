@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-from types import SimpleNamespace
-
 
 class Quadtree:
     def __init__(self, points, rect, depth):
