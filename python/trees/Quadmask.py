@@ -14,12 +14,12 @@ def mask(point, depth):
     for i in range(depth):
         quad_size /= 2.0
         if point[2] > quad_posz:
-            mask |= 1 << ((i << 1) + 2)
+            mask |= 1 << ((i * 3) + 2)
             quad_posz += quad_size
         if point[1] > quad_posy:
-            mask |= 1 << ((i << 1) + 1)
+            mask |= 1 << ((i * 3) + 1)
             quad_posy += quad_size
         if point[0] > quad_posx:
-            mask |= 1 << ((i << 1) + 0)
+            mask |= 1 << ((i * 3) + 0)
             quad_posx += quad_size
     return mask

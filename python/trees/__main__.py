@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from Quadtree import Quadtree
 from Octree import Octree
+import Quadmask
 import pygame
 from pygame.locals import *
 from random import random, randint
