@@ -20,8 +20,6 @@ class Quadtree:
 
         rect_L = rect[0]           # left
         rect_T = rect[1]           # top
-        rect_R = rect[0] + rect[2] # right
-        rect_B = rect[1] + rect[3] # bottom
         half_W = rect[2] / 2       # half width
         half_H = rect[3] / 2       # half height
         half_X = rect[0] + half_W  # horisontal center
