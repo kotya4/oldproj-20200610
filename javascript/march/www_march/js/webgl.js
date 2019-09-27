@@ -353,54 +353,54 @@ WebGL.vbo_cube = () => {
 }
 
 // TODO: do not working, see index.js instead
-WebGL.demo = () => {
-  const { mat4 } = glMatrix;
+// WebGL.demo = () => {
+//   const { mat4 } = glMatrix;
 
-  // creating webgl
-  const screen_width = 300;
-  const screen_height = 300;
-  const webgl = WebGL(screen_width, screen_height);
-  webgl.bind_vbo(WebGL.vbo_cube());
+//   // creating webgl
+//   const screen_width = 300;
+//   const screen_height = 300;
+//   const webgl = WebGL(screen_width, screen_height);
+//   webgl.bind_vbo(WebGL.vbo_cube());
 
-  // projection matrix
-  const mat_projection = mat4.create();
-  mat4.perspective(mat_projection, Math.PI / 4, screen_width / screen_height, 0.1, 100.0);
-  mat4.translate(mat_projection, mat_projection, [-0.5, -0.5, -5.0]);
+//   // projection matrix
+//   const mat_projection = mat4.create();
+//   mat4.perspective(mat_projection, Math.PI / 4, screen_width / screen_height, 0.1, 100.0);
+//   mat4.translate(mat_projection, mat_projection, [-0.5, -0.5, -5.0]);
 
-  // modelview matrix
-  const mat_modelview = mat4.create();
-  mat4.translate(mat_modelview, mat_modelview, [+0.5, +0.5, +0.5]);
-  mat4.rotateX(mat_modelview, mat_modelview, Math.random() * Math.PI * 2);
-  mat4.rotateY(mat_modelview, mat_modelview, Math.random() * Math.PI * 2);
-  mat4.rotateZ(mat_modelview, mat_modelview, Math.random() * Math.PI * 2);
-  mat4.translate(mat_modelview, mat_modelview, [-0.5, -0.5, -0.5]);
+//   // modelview matrix
+//   const mat_modelview = mat4.create();
+//   mat4.translate(mat_modelview, mat_modelview, [+0.5, +0.5, +0.5]);
+//   mat4.rotateX(mat_modelview, mat_modelview, Math.random() * Math.PI * 2);
+//   mat4.rotateY(mat_modelview, mat_modelview, Math.random() * Math.PI * 2);
+//   mat4.rotateZ(mat_modelview, mat_modelview, Math.random() * Math.PI * 2);
+//   mat4.translate(mat_modelview, mat_modelview, [-0.5, -0.5, -0.5]);
 
-  webgl.set_ambient_light([0.1, 0.0, 0.0]);
-  webgl.set_directional_light([1.0, 0.0, 0.0], [0.85, 0.80, 0.75]);
+//   webgl.set_ambient_light([0.1, 0.0, 0.0]);
+//   webgl.set_directional_light([1.0, 0.0, 0.0], [0.85, 0.80, 0.75]);
 
-  // start rendering
-  let old_timestamp = 0;
-  (function render(timestamp = 0) {
-    const elapsed = timestamp - old_timestamp;
-    old_timestamp = timestamp;
+//   // start rendering
+//   let old_timestamp = 0;
+//   (function render(timestamp = 0) {
+//     const elapsed = timestamp - old_timestamp;
+//     old_timestamp = timestamp;
 
-    // cube rotations
-    mat4.translate(mat_modelview, mat_modelview, [+0.5, +0.5, +0.5]);
-    mat4.rotateX(mat_modelview, mat_modelview, +0.001 * elapsed);
-    mat4.rotateY(mat_modelview, mat_modelview, +0.002 * elapsed);
-    mat4.rotateZ(mat_modelview, mat_modelview, -0.001 * elapsed);
-    mat4.translate(mat_modelview, mat_modelview, [-0.5, -0.5, -0.5]);
+//     // cube rotations
+//     mat4.translate(mat_modelview, mat_modelview, [+0.5, +0.5, +0.5]);
+//     mat4.rotateX(mat_modelview, mat_modelview, +0.001 * elapsed);
+//     mat4.rotateY(mat_modelview, mat_modelview, +0.002 * elapsed);
+//     mat4.rotateZ(mat_modelview, mat_modelview, -0.001 * elapsed);
+//     mat4.translate(mat_modelview, mat_modelview, [-0.5, -0.5, -0.5]);
 
-    // normal matrix
-    const mat_normal = mat4.create();
-    mat4.invert(mat_normal, mat_modelview);
-    mat4.transpose(mat_normal, mat_normal);
+//     // normal matrix
+//     const mat_normal = mat4.create();
+//     mat4.invert(mat_normal, mat_modelview);
+//     mat4.transpose(mat_normal, mat_normal);
 
-    // drawing
-    webgl.clear();
-    webgl.draw(mat_projection, mat_modelview, mat_normal);
+//     // drawing
+//     webgl.clear();
+//     webgl.draw(mat_projection, mat_modelview, mat_normal);
 
-    // requesting next frame
-    requestAnimationFrame(render);
-  })();
-}
+//     // requesting next frame
+//     requestAnimationFrame(render);
+//   })();
+// }

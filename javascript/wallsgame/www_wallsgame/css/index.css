@@ -1,0 +1,11 @@
+body {
+  background: #111;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+canvas {
+  //image-rendering: pixelated;
+  //width: 300px;
+}
