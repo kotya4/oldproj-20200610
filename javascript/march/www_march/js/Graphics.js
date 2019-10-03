@@ -1,7 +1,7 @@
 function Graphics(args) {
   const { vec3, mat4 } = glMatrix;
 
-
+  doc_maxdim = Math.max(document);
   // creating webgl
   const screen_width = 500;
   const screen_height = 500;

@@ -38,7 +38,7 @@ Includer().include('www_march/js/', [
     //   map[z][y][x] = Math.sin(x)// + Math.sin(1) + Math.sin(0.5);
     // });
 
-    // voxelmap.hyperboloid(10, -1, +0.5, +0.5, +1, -1);
+    voxelmap.hyperboloid(10, -1, +0.5, +0.5, +1, -1);
 
     const mesh = voxelmap.generate_mesh();
     graphics.ctx.clearRect(0, 0, graphics.ctx.canvas.width, graphics.ctx.canvas.height);
