@@ -2,8 +2,8 @@
  *
  */
 
-const POC_FLAG = 1;
-const MOV_NEXT = 1;
+const POC_FLAG = 0;
+const MOV_NEXT = 0;
 const ROT_NEXT = 1;
 
 window.onload = () => {
@@ -22,19 +22,23 @@ window.onload = () => {
   const subrows_num = 6;
   const subrows_num_HALF = Math.ceil(subrows_num / 2) - 1;
 
-  const wx = 300;            // window width (can be changed in runtime without harm)
+  const wx = 200;            // window width (can be changed in runtime without harm)
   const wy = 100;            // window height
-  const cn = 6;              // columns number
+  const cn = 7;              // columns number
   const details_reduction = 0; // skips column details from further (zero or more)
   const cx = [...Array(cn)]; // column x positions
-  cx[0] = 0;
+  cx[0] = -wx / 2;
+  cx[1] = 0;
   cx[cn - 1] = wx / 2;
-  for (let i = 1; i < cn - 1; ++i) {
-     cx[i] = cx[i - 1] + (wx >> (i + 1)); // good when cn < 36 and all columns are walls corners
-    //cx[i] = cx[i - 1] + (wx / i / i); //Math.pow(wx, 1.5 / (i + 1));
+  for (let i = 2; i < cn - 1; ++i) {
+    cx[i] = cx[i - 1] + (wx >> i); // good when cn < 36 and all columns are walls corners
+    // same as:
+    // cx[i] = cx[i - 1] + (wx / Math.pow(2, (i + 1)));
+    // or:
+    // cx[i] = cx[i - 1] + wx [/ 2.0] x cn -- divide by 2 cn times
   }
   const rs = wx / 50.0;    // rotation speed (pixel per frame)
-  const ms = 50;           // move speed (frame per second)
+  const ms = 50;           // move speed (frame per second) (DO NOT SET LESS THAN 50 or change 'move exit' logic)
   const ad = wx / wy / ms; // acceleration delta
   let ac = 1;              // current acceleration
   let st = 0;              // drawing status
@@ -67,17 +71,14 @@ window.onload = () => {
 
     for (let i = 0; i < cn; ++i) {
 
+
       // ===== column by left ========
 
       w1.cl[i].x  = cx[i];
       w1.cl[i].y  = cx[i] * wy / wx;
-      w1.cl[i].dx = 0;
+      w1.cl[i].dx = i > 0 ? w1.cl[i - 1].x : 0;
       w1.cl[i].dy = w1.cl[i].y;
-      w1.cl[i].sx = -1; // MUST BE -1 (see if-statement on 'move')
-      if (i > 0) {
-        w1.cl[i].dx = w1.cl[i - 1].x;
-        w1.cl[i].sx = (w1.cl[i - 1].x - w1.cl[i].x) / ms;
-      }
+      w1.cl[i].sx = i > 0 ? ((w1.cl[i - 1].x - w1.cl[i].x) / ms) : 0;
       w1.cl[i].sy = w1.cl[i].sx * wy / wx;
 
       // ===== column by right ======
@@ -101,6 +102,7 @@ window.onload = () => {
 
       let acc_x = cx[i]; // default previous x position (accumulator)
 
+
       for (let k = 0; k < subcolumns_num; ++k) {
         // left subcolumns
         const sL = w1.cl[i].subcolumns[k];
@@ -111,7 +113,9 @@ window.onload = () => {
         //      where `subcolumn_offset = subcolumn_w * DELTA;`, DELTA can be [0; 1).
         //      Adds offset to subcolumns and makes they more perspective.
         sL.y  = sL.x * wy / wx; // y position
-        sL.sx = 0; if (i > 0) sL.sx = (w1.cl[i - 1].subcolumns[k].x - sL.x) / ms;
+
+        sL.sx = i > 0 ? ((w1.cl[i - 1].subcolumns[k].x - sL.x) / ms) : 0;
+
         sL.sy = sL.sx * wy / wx;
 
         // right subcolumns
@@ -129,7 +133,7 @@ window.onload = () => {
         for (let t = 0; t < subrows_num_HALF; ++t) {
           const pL = sL.points[t];
           pL.y  = sL.y + sLPh * (t + 1);
-          pL.sy = 0; if (i > 0) pL.sy = (w1.cl[i - 1].subcolumns[k].points[t].y - pL.y) / ms;
+          pL.sy = i > 0 ? ((w1.cl[i - 1].subcolumns[k].points[t].y - pL.y) / ms) : 0;
 
           sR.points[t].y  = +pL.y;
           sR.points[t].sy = +pL.sy; // no need to define?
@@ -245,59 +249,27 @@ window.onload = () => {
 
     // bottom line
     draw_line(BLx, BLy, BRx, BRy);
-    /*
-    const rows_num = 4;
-    const cols_num = 3;
-
-    const Lh = BLy - TLy;
-    const Rh = BRy - TRy;
-
-    const w = TRx - TLx; // same as BRx - BLx
-
-
-
-    // horisontal lines (rows_num)
-    for (let i = 1; i < rows_num; ++i) {
-
-      draw_line(TLx, TLy + Lh / rows_num * i, TRx, TRy + Rh / rows_num * i, color);
-
-    }
-
-
-
-    // vertical lines (cols_num)
-    for (let i = 1; i < cols_num; ++i) {
-
-      const x = TLx + w / cols_num * i;
-      const y1 = x * wy / wx;
-      const y2 = wy - y1;
-
-      draw_line(x, y1, x, y2, color);
-
-    }
-    */
 
   }
 
 
-  // uses 'cvt_column2arr'
+
   // drw: function (x1, y1, x2, y2, depth)
   const draw_wall = (w, drw) => {
-
     ctx.save();
-    ctx.translate(100, 100);
+    const transx = 250, transy = 200;
+    ctx.translate(transx, transy);
 
-    // TODO: (!!! IN DEV !!!)
-    const maoff = 0; // dumped map offset
 
     let d = [...Array(8)];
     let c = [...Array(8)];
     let o = [...Array(8)];
 
-    for (let i = 0; i < cn; ++i) {
+    let i = 0;
+    for ( ; i < cn; ++i) {
 
       // do not draw last column subcolumns, they are not initialized
-      if (i < cn - 1 - details_reduction && (i > 0 || st !== MOV)) {
+      if (0 < i && i < cn - 1 - details_reduction) {
         // subcolumns
         for (let k = 0; k < subcolumns_num; ++k) {
           // left subcolumn
@@ -356,55 +328,57 @@ window.onload = () => {
       d[6] =  d[4];
       d[7] =  wy - d[5];
 
-      // vertical lines (need only when rotating, but who cares?)
-      drw(c[0], c[1], c[2], c[3], i);
-      drw(c[4], c[5], c[6], c[7], i);
-
-      // draws columns on sides
-      if (i > 0) { // after first iteration
-
-        // left wall
-        if (w.ma[0][i - 1 + maoff] === 1) {
-          draw_brickwall(o[0], o[1], c[0], c[1], o[2], o[3], c[2], c[3], 'blue');
-        }
-        // left door
-        else {
-          drw(d[0], d[1], c[0], c[1], i);
-          drw(d[2], d[3], c[2], c[3], i);
-        }
-        // right wall
-        if (w.ma[2][i - 1 + maoff] === 1) {
-          drw(c[4], c[5], o[4], o[5], i);
-          drw(c[6], c[7], o[6], o[7], i);
-        }
-        // right door
-        else {
-          drw(d[4], d[5], c[4], c[5], i);
-          drw(d[6], d[7], c[6], c[7], i);
-        }
-      }
-
-      // wall in front
-      if (w.ma[1][i + maoff] === 1) {
-        drw(c[0], c[1], c[2], c[3], i); // |
+      if (i > 0) {
+        // vertical lines (need only when rotating, but who cares?)
+        drw(c[0], c[1], c[2], c[3], i);
         drw(c[4], c[5], c[6], c[7], i);
-        drw(c[0], c[1], c[4], c[5], i); // _
-        drw(c[2], c[3], c[6], c[7], i);
-        //return; // no need to draw other ones
-      }
 
+        // draws columns on sides
+        if (i > 1) { // after first iteration
+
+          // left wall
+          if (w.ma[0][i - 1] === 1) {
+            draw_brickwall(o[0], o[1], c[0], c[1], o[2], o[3], c[2], c[3], 'blue');
+          }
+          // left door
+          else {
+            drw(d[0], d[1], c[0], c[1], i);
+            drw(d[2], d[3], c[2], c[3], i);
+          }
+          // right wall
+          if (w.ma[2][i - 1] === 1) {
+            drw(c[4], c[5], o[4], o[5], i);
+            drw(c[6], c[7], o[6], o[7], i);
+          }
+          // right door
+          else {
+            drw(d[4], d[5], c[4], c[5], i);
+            drw(d[6], d[7], c[6], c[7], i);
+          }
+        }
+
+        // wall in front
+        if (w.ma[1][i] === 1) {
+          drw(c[0], c[1], c[2], c[3], i); // |
+          drw(c[4], c[5], c[6], c[7], i);
+          drw(c[0], c[1], c[4], c[5], i); // _
+          drw(c[2], c[3], c[6], c[7], i);
+
+          break; // no need to draw other ones
+        }
+
+      }
       // swap buffers
       [o, c] = [c, o];
     }
 
     // "X" in the end of room (only while moving)
-    if (st === MOV) {
+    if (i === cn && st === MOV) {
       drw(o[0], o[1], w.ox * mx + dx, w.oy, cn);
       drw(o[2], o[3], w.ox * mx + dx, w.oy, cn);
       drw(o[4], o[5], w.ox * mx + dx, w.oy, cn);
       drw(o[6], o[7], w.ox * mx + dx, w.oy, cn);
     }
-
 
     ctx.fillStyle = 'red';
     ctx.fillRect(w1.ox, w1.oy, 2, 2);
@@ -414,8 +388,18 @@ window.onload = () => {
     ctx.fillRect(w1.rx, w1.ry, 10, 10);
     ctx.fillRect(w1.rx, wy - w1.ry, 10, 10);
 
-
     ctx.restore();
+
+    ctx.fillStyle = 'rgba(50, 50, 50, 0.5)';
+    ctx.fillRect(0, 0, ctx.canvas.width, transy); // top
+    ctx.fillRect(0, transy + wy, ctx.canvas.width, ctx.canvas.height); // bottom
+    ctx.fillRect(0, 0, transx, ctx.canvas.height); // left
+    ctx.fillRect(transx + wx, 0, ctx.canvas.width, ctx.canvas.height); // right
+
+    ctx.font = '20px "Arial"';
+    ctx.fillStyle = 'blue';
+    ctx.fillText('fuck you', 30, 30);
+
   }
 
 
@@ -425,7 +409,9 @@ window.onload = () => {
     if (st !== MOV) {
       st = MOV;
       ac = 1;
-    } else if (w1.cl[0].x <= 3 - ms) { // MUST BE <= 3, because cl[0].sx == -1
+    }
+    // move exit
+    else if (w1.cl[2].x + w1.cl[2].sx * ac <= 0) {
       st = 0;
       reset_main_wall(w1);
       return 1; // over
@@ -519,7 +505,7 @@ window.onload = () => {
 
     // redefines columns
     let I = null; // intersection buffer
-    for (let i = 0; i < cn; ++i) {
+    for (let i = 1; i < cn; ++i) {
 
       // You MUST calculate intersections after w.px > wx because
       // you need calculated values to draw deadend (front) columns.
@@ -610,7 +596,7 @@ window.onload = () => {
 
       // doors
 
-      if (i > 0) {
+      if (i > 1) {
         const u = i - 1;
 
         // TODO: you dont need calculate dx, dy if there is no doors (do check w.ma)
@@ -672,21 +658,21 @@ window.onload = () => {
     let dx2 = 0;
     let dy2 = 0;
     switch(d) {
-      case 0: mmx -= r; mmy -= 1; dy1 = -1; dx2 =  r; break;
-      case 1: mmx += 1; mmy -= r; dx1 =  1; dy2 =  r; break;
-      case 2: mmx += r; mmy += 1; dy1 =  1; dx2 = -r; break;
-      case 3: mmx -= 1; mmy += r; dx1 = -1; dy2 = -r; break;
+      case 0: mmx -= r; mmy -= 0; dy1 = -1; dx2 =  r; break;
+      case 1: mmx += 0; mmy -= r; dx1 =  1; dy2 =  r; break;
+      case 2: mmx += r; mmy += 0; dy1 =  1; dx2 = -r; break;
+      case 3: mmx -= 0; mmy += r; dx1 = -1; dy2 = -r; break;
     }
     for (let i = 0; i < 3; ++i) {
-      let px = mmx;
-      let py = mmy;
+      let x_ = mmx;
+      let y_ = mmy;
       for (let c = 0; c < cn; ++c) {
         w.ma[i][c] = 1; // default
-        if (px >= 0 && px < mapw && py >= 0 && py < maph) {
-          w.ma[i][c] = map[px][py];
+        if (x_ >= 0 && x_ < mapw && y_ >= 0 && y_ < maph) {
+          w.ma[i][c] = map[x_][y_];
         }
-        px += dx1;
-        py += dy1;
+        x_ += dx1;
+        y_ += dy1;
       }
       mmx += dx2;
       mmy += dy2;
@@ -713,10 +699,14 @@ window.onload = () => {
     const map = [...Array(16)].map((_,y) => [...Array(16)].map((_,x) =>
       ('翿䁁坝儑啕䐁啽䄁啷儑嗕䐑坵儅翿'.charCodeAt(y) >> x) & 1));
 
-    let px  = 7; // camera position
-    let py  = 6;
+
+    let player_x = 7, player_y = 6; // player position
+
+
+    let px = player_x, py = player_y; // camera position
     let dir = 0; // 0: top, 1: right, 2: down, 3: left
     let rot = 1; // left(forward): -1, right: +1
+
 
     dump_map(map, 16, 16, w1, dir, rot, px, py);
 
@@ -730,6 +720,9 @@ window.onload = () => {
     // randomly rotates camera
     const next_dir = () => {
       // possible directions
+
+      //console.log(px, py);
+
       const d = ((map[px + 0][py - 1] === 0) << 0) | // ^
                 ((map[px + 1][py + 0] === 0) << 1) | // >
                 ((map[px + 0][py + 1] === 0) << 2) | // v
@@ -753,17 +746,6 @@ window.onload = () => {
         dir: dir - 1 < 0 ? 3 : dir - 1,
         flg: F_AHD,
       }
-    }
-
-
-    const draw_minimap = () => {
-      ctx.fillStyle = 'rgba(100, 100, 100, 0.5)';
-      for (let y = 0; y < 16; ++y)
-        for (let x = 0; x < 16; ++x)
-          if (map[x][y])
-            ctx.fillRect(220 + x * 5, 5 + y * 5, 4, 4);
-      ctx.fillStyle = 'rgba(250, 250, 250, 0.5)';
-      ctx.fillRect(220 + px * 5, 5 + py * 5, 4, 4);
     }
 
 
@@ -844,6 +826,16 @@ window.onload = () => {
         if (F_ROT === flg) {
           draw_wall(w2, draw_line);
         }
+
+        ctx.fillStyle = 'white';
+        for (let y = 0; y < 16; ++y)
+          for (let x = 0; x < 16; ++x)
+            if (map[x][y])
+              ctx.fillRect(10 * x, 10 * (16 - y - 2), 10, 10);
+        ctx.fillStyle = 'red';
+        ctx.fillRect(10 * px, 10 * (16 - py - 2), 10, 10);
+
+
       }, 100);
 
   }
