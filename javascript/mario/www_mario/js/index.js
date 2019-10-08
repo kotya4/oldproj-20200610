@@ -53,7 +53,7 @@ window.onload = function () {
     if (keyboard.pressed('Space')) {
       player.move(map, elapsed, 'up');
     } else {
-      //player.move(map, elapsed, 'down');
+      player.move(map, elapsed, 'down');
     }
 
     // draw
