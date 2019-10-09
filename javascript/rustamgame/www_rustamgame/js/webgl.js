@@ -2,7 +2,7 @@
 if (!vec3) var vec3 = glMatrix.vec3;
 if (!mat4) var mat4 = glMatrix.mat4;
 
-function WebGL({ screen_width, screen_height, parent, class_name }) {
+function WebGL(screen_width, screen_height, parent, class_name) {
   screen_width  = screen_width  || 300;
   screen_height = screen_height || 300;
   parent        = parent        || document.body;
@@ -67,6 +67,7 @@ function WebGL({ screen_width, screen_height, parent, class_name }) {
         define_uniform_locations(shader_program, dict[key]);
       }
     }
+    return dict;
   }
 
 
@@ -77,6 +78,7 @@ function WebGL({ screen_width, screen_height, parent, class_name }) {
         gl.enableVertexAttribArray(dict[key]);
       }
     }
+    return dict;
   }
 
 
@@ -264,7 +266,7 @@ WebGL.render_demo = function(parent) {
   const screen_width = 400;
   const screen_height = 250;
 
-  const { gl, webgl } = WebGL({ screen_width, screen_height, parent });
+  const { gl, webgl } = WebGL(screen_width, screen_height, parent);
 
   // --------------- shaders --------------------
 
@@ -332,7 +334,6 @@ WebGL.render_demo = function(parent) {
     coord: 'a_coord',
     color: 'a_color',
     normal: 'a_normal',
-
   };
 
   webgl.define_uniform_locations(shader_program, u_loc);
