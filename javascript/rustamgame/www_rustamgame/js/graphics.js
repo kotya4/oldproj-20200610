@@ -29,15 +29,18 @@ function Graphics(screen_width, screen_height, parent) {
     normal: 'a_normal',
   });
 
-  webgl.set_ambient_light(u_loc.ambient_light, [0.5, 0.5, 0.5]);
-  webgl.set_directional_light(u_loc.directional_light, [0.5, 0.5, 0.5], [0, +0.5, -0.5]);
+  webgl.set_ambient_light(u_loc.ambient_light, [0.0, 0.0, 0.0]);
+  webgl.set_directional_light(u_loc.directional_light, [0.0, 0.0, 1.0], [0.8, +1.5, -0.8]); // sin wave a? a? a?
 
   const triangle = Graphics.create_triangle();
 
+  const color_array_buffer = webgl.bind_array_buffer(a_loc.color, new Float32Array(triangle.colors), 4, gl.FLOAT);
+
   webgl.bind_array_buffer(a_loc.coord,  new Float32Array(triangle.coordinates), 3, gl.FLOAT);
-  webgl.bind_array_buffer(a_loc.color,  new Float32Array(triangle.colors),      4, gl.FLOAT);
   webgl.bind_array_buffer(a_loc.normal, new Float32Array(triangle.normals),     3, gl.FLOAT);
   webgl.bind_element_buffer(new Uint16Array(triangle.indices));
+
+  console.log(triangle.normals);
 
   const mat_projection = mat4.create();
   const FOV    = Math.PI / 4;
@@ -56,7 +59,7 @@ function Graphics(screen_width, screen_height, parent) {
 
   const camera_position = [-triangle.center_right[0], 0.0, -camera_zoom];
 
-  const scene_rotation = [+0.5, +0.0, +0.0];
+  const scene_rotation = [22.5 * Math.PI / 180, +0.0, +0.0];
 
   const scene_origin = triangle.center_right;
 
@@ -71,16 +74,48 @@ function Graphics(screen_width, screen_height, parent) {
 
   const map_width = 10;
   const map_height = 10;
-  const map = [...Array(map_width * map_height)].map(e => true);
+  const map = [...Array(map_width * map_height)].map(e => Math.random() < 0.5 ? 0 : Math.random() * 10 | 0);
+
 
   const player_x = 0;
   const player_y = 0;
+  const player_view_dist_x = 10;
+  const player_view_dist_y = 10;
 
   function map_get(x, y) {
     if (x < 0) x += map_width; else if (x > map_width - 1) x -= map_width;
     if (y < 0) y += map_height; else if (y > map_height - 1) y -= map_height;
     return map[x + y * map_width];
   }
+
+  // ------------ map configuration -------
+
+  // Logic map example:
+  // .------------------->X
+  // |
+  // |  [0][1][2][3][4][5]
+  // |  [6][7][8][9][A][B]
+  // v
+  // Z
+  //
+  // Visual map example:
+  // .--------------------------->X
+  // |        ,_____,_____,_____,
+  // |       /0\ 1 /2\ 3 /4\ 5 /
+  // |     ,/___\,/___\,/___\,/
+  // |    /6\ 7 /8\ 9 /A\ B /
+  // v   /___\,/___\,/___\,/
+  // Z
+  //
+  // Moving rules:
+  //
+  // INDEX(X, Y) = X + Y * ROW_LENGTH;
+  //
+  // If player stands on odd index, he can move
+  // UP: X - 1, Y - 1, neither DOWN: X + 1, Y + 1.
+  // Also player always can move LEFT: X - 1 or RIGHT: X + 1.
+
+
 
 
   // ------------ mouse ------------------
@@ -141,10 +176,14 @@ function Graphics(screen_width, screen_height, parent) {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
 
-    for (let x = 0; x < map_width; ++x)
-      for (let y = 0; y < map_height; ++y)
+    for (let y = -player_view_dist_y / 2; y < +player_view_dist_y / 2; ++y)
+      for (let x = -player_view_dist_x; x < +player_view_dist_x; ++x)
     {
-      if (map_get(x, y)) {
+      const map_value = map_get(x, y);
+      if (map_value) {
+
+        const figure_color = DATA__randomcolors[map_value];
+        webgl.bind_array_buffer(a_loc.color, new Float32Array(Array(triangle.indices.length / 3).fill(figure_color).flat()), 4, gl.FLOAT, color_array_buffer);
 
         Stack.push(mat_modelview);
 
@@ -156,17 +195,14 @@ function Graphics(screen_width, screen_height, parent) {
         mat4.translate(mat_modelview, mat_modelview, [-scene_origin[0], -scene_origin[1], -scene_origin[2]]);
 
 
-        const offset = y % 2;
-        const swiped = (x + y) % 2;
+        mat4.translate(mat_modelview, mat_modelview, [(x + y) * triangle.a / 2, 0, y * triangle.h]);
 
 
-        mat4.translate(mat_modelview, mat_modelview, [triangle.a / 2 * x, +0.0, triangle.h * y]);
-
-        if (swiped) {
-          mat4.translate(mat_modelview, mat_modelview, [triangle.a / 2, 0, 0]);
+        if (x % 2) {
+          mat4.translate(mat_modelview, mat_modelview, [triangle.a, 0, triangle.h]);
           mat4.rotateY(mat_modelview, mat_modelview, Math.PI);
-
         }
+
 
         const view = mat4.create();
         mat4.multiply(view, mat_projection, mat_modelview);
@@ -222,23 +258,50 @@ Graphics.create_triangle = function() {
   const a = 1.0;
   const h = a * (3 ** 0.5) / 2;
   const r = a * (3 ** 0.5) / 6;
-  const z = 0.0;
+  const z = -1.0;
 
   const center_left = [0, z, h - r];  // reversed triangle by left
   const center_right = [a / 2, z, r]; // actual triangle by right
   const center_block = [a / 4, z, a * (3 ** 0.5) / 4]; // parallelogram center
 
+  const coordinates = [
+    0, 0, 0,   a, 0, 0,   a / 2, 0, h, // triangle
+    0, z, 0,   a, z, 0,   a / 2, z, h, // corners
+  ];
+
+  const indices = [
+    0, 2, 1,          // triangle
+    3, 0, 1, 1, 4, 3, // front corner
+    4, 1, 2, 2, 5, 4, // right corner
+    5, 2, 0, 0, 3, 5, // left corner
+  ];
+
+
 
   return {
-    coordinates: [
-      // triangle itself
-      0, z, 0,   a, z, 0,   a / 2, 0, h,
-      // corners
+    coordinates,
+    indices,
+
+    normals: [
+      // 0, +1,  0,    0, +1,  0,    0, +1,  0,
+
+      ...[...Array(indices.length / 3)].map((_, i) =>  Array(3).fill(WebGL.create_face_normal(
+        coordinates[0 + 3 * indices[0 + 3 * i]],
+        coordinates[1 + 3 * indices[0 + 3 * i]],
+        coordinates[2 + 3 * indices[0 + 3 * i]],
+
+        coordinates[0 + 3 * indices[1 + 3 * i]],
+        coordinates[1 + 3 * indices[1 + 3 * i]],
+        coordinates[2 + 3 * indices[1 + 3 * i]],
+
+        coordinates[0 + 3 * indices[2 + 3 * i]],
+        coordinates[1 + 3 * indices[2 + 3 * i]],
+        coordinates[2 + 3 * indices[2 + 3 * i]],
+      )).flat()).flat(),
 
     ],
-    normals: [0, +1,  0,    0, +1,  0,    0, +1,  0],
-    indices: [0, 1, 2],
-    colors: [1.0, 0.0, 0.0, 1.0,   0.0, 1.0, 0.0, 1.0,    0.0, 0.0,1.0, 1.0],
+
+    colors: [...Array(indices.length / 3)].map(_ => [1.0, 0.0, 0.0, 1.0,   0.0, 1.0, 0.0, 1.0,    0.0, 0.0, 1.0, 1.0,]).flat(),
 
     center_left,
     center_right,
