@@ -1,10 +1,6 @@
-@font-face {
-    font-family: 'Clacon';
-    src: url('../fonts/clacon.ttf');
-}
 
 body {
-  background: #aaa;
+  background: #111;
   //display: flex;
   justify-content: center;
   align-items: center;
