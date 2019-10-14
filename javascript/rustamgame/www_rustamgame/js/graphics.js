@@ -30,9 +30,10 @@ function Graphics(screen_width, screen_height, parent) {
   });
 
   webgl.set_ambient_light(u_loc.ambient_light, [0.0, 0.0, 0.0]);
-  webgl.set_directional_light(u_loc.directional_light, [0.0, 0.0, 1.0], [0.8, +1.5, -0.8]); // sin wave a? a? a?
+  webgl.set_directional_light(u_loc.directional_light, [1.0, 1.0, 1.0], [0, 0, 1]); // sin wave a? a? a?
 
   const triangle = Graphics.create_triangle();
+  console.log(triangle);
 
   const color_array_buffer = webgl.bind_array_buffer(a_loc.color, new Float32Array(triangle.colors), 4, gl.FLOAT);
 
@@ -40,7 +41,6 @@ function Graphics(screen_width, screen_height, parent) {
   webgl.bind_array_buffer(a_loc.normal, new Float32Array(triangle.normals),     3, gl.FLOAT);
   webgl.bind_element_buffer(new Uint16Array(triangle.indices));
 
-  console.log(triangle.normals);
 
   const mat_projection = mat4.create();
   const FOV    = Math.PI / 4;
@@ -57,15 +57,17 @@ function Graphics(screen_width, screen_height, parent) {
 
   const camera_zoom = 5;
 
-  const camera_position = [-triangle.center_right[0], 0.0, -camera_zoom];
+  const camera_height = 0;
+
+  const camera_position = [-triangle.center_actual[0], -camera_height, -camera_zoom];
 
   const scene_rotation = [22.5 * Math.PI / 180, +0.0, +0.0];
 
-  const scene_origin = triangle.center_right;
+  const scene_origin = triangle.center_actual;
 
-  const scene_next_origin = triangle.center_left;
+  const scene_next_origin = triangle.center_reversed;
 
-  const scene_next_origin_vector = triangle.center_right.map((e, i) => triangle.center_left[i] - e);
+  const scene_next_origin_vector = triangle.center_actual.map((e, i) => triangle.center_reversed[i] - e);
 
   let scene_next_origin_vector_scaler = 0.0;
 
@@ -74,19 +76,24 @@ function Graphics(screen_width, screen_height, parent) {
 
   const map_width = 10;
   const map_height = 10;
-  const map = [...Array(map_width * map_height)].map(e => Math.random() < 0.5 ? 0 : Math.random() * 10 | 0);
+  // const map = [...Array(map_width * map_height)].map(e => Math.random() < 0.5 ? 0 : Math.random() * 10 | 0);
+  const map = [...Array(map_width * map_height)].map(e => 1 + Math.random() * 9 | 0);
 
 
   const player_x = 0;
   const player_y = 0;
-  const player_view_dist_x = 10;
-  const player_view_dist_y = 10;
+  const player_view_dist_x = 1;
+  const player_view_dist_y = 1;
 
   function map_get(x, y) {
     if (x < 0) x += map_width; else if (x > map_width - 1) x -= map_width;
     if (y < 0) y += map_height; else if (y > map_height - 1) y -= map_height;
     return map[x + y * map_width];
   }
+
+
+  let dlight_sina = 0;
+
 
   // ------------ map configuration -------
 
@@ -114,9 +121,6 @@ function Graphics(screen_width, screen_height, parent) {
   // If player stands on odd index, he can move
   // UP: X - 1, Y - 1, neither DOWN: X + 1, Y + 1.
   // Also player always can move LEFT: X - 1 or RIGHT: X + 1.
-
-
-
 
   // ------------ mouse ------------------
 
@@ -159,11 +163,17 @@ function Graphics(screen_width, screen_height, parent) {
     // player
     const RADIUS = 60 / camera_zoom;
     const POSX = screen_width / 2;
-    const POSY = screen_height / 2 - RADIUS;
+    const POSY = screen_height / 2;
     ctx.fillStyle = 'cyan';
     ctx.beginPath();
     ctx.arc(POSX, POSY, RADIUS, 0, 2 * Math.PI);
     ctx.fill();
+
+
+    // webgl.set_directional_light(u_loc.directional_light, [1.0, 1.0, 1.0], [0, -Math.sin(dlight_sina), Math.sin(dlight_sina)]);
+    // dlight_sina += elapsed * 0.001;
+    // ctx.fillText(dlight_sina, 10, 100);
+    // ctx.fillText(Math.sin(dlight_sina), 10, 120);
 
 
     // push matrices
@@ -176,14 +186,16 @@ function Graphics(screen_width, screen_height, parent) {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
 
-    for (let y = -player_view_dist_y / 2; y < +player_view_dist_y / 2; ++y)
-      for (let x = -player_view_dist_x; x < +player_view_dist_x; ++x)
+    // for (let y = -player_view_dist_y / 2 | 0; y < +player_view_dist_y / 2 | 0; ++y)
+    //   for (let x = -player_view_dist_x; x < +player_view_dist_x; ++x)
+    for (let y = 0; y < 1; ++y)
+      for (let x = 0; x < 1; ++x)
     {
       const map_value = map_get(x, y);
       if (map_value) {
 
         const figure_color = DATA__randomcolors[map_value];
-        webgl.bind_array_buffer(a_loc.color, new Float32Array(Array(triangle.indices.length / 3).fill(figure_color).flat()), 4, gl.FLOAT, color_array_buffer);
+        webgl.bind_array_buffer(a_loc.color, new Float32Array(Array(triangle.indices.length).fill(figure_color).flat()), 4, gl.FLOAT, color_array_buffer);
 
         Stack.push(mat_modelview);
 
@@ -215,6 +227,49 @@ function Graphics(screen_width, screen_height, parent) {
         gl.uniformMatrix4fv(u_loc.normal, false, normal);
 
         gl.drawElements(gl.TRIANGLES, triangle.indices.length, gl.UNSIGNED_SHORT, 0);
+
+
+
+        for (let i = 0; i < triangle.indices.length; ++i) {
+          const index = triangle.indices[i];
+
+          const coord = [
+            triangle.coordinates[0 + 3 * index],
+            triangle.coordinates[1 + 3 * index],
+            triangle.coordinates[2 + 3 * index],
+          ];
+
+          const nscale = 1;
+
+          const normal = [
+            coord[0] + triangle.normals[0 + 3 * index] * nscale,
+            coord[1] + triangle.normals[1 + 3 * index] * nscale,
+            coord[2] + triangle.normals[2 + 3 * index] * nscale,
+          ];
+
+          const posT = vec3.create();
+          vec3.transformMat4(posT, coord, view);
+          const from = [
+            (posT[0] / +posT[2] + 1) * (screen_width >> 1),
+            (posT[1] / -posT[2] + 1) * (screen_height >> 1),
+          ];
+
+          vec3.transformMat4(posT, normal, view);
+          const to = [
+            (posT[0] / +posT[2] + 1) * (screen_width >> 1),
+            (posT[1] / -posT[2] + 1) * (screen_height >> 1),
+          ];
+
+          ctx.strokeStyle = 'yellow';
+          ctx.beginPath();
+          ctx.moveTo(...from);
+          ctx.lineTo(...to);
+          ctx.stroke();
+
+          ctx.fillStyle = 'white';
+          ctx.fillText(i, ...to);
+        }
+
 
 
         Stack.pop(mat_modelview);
@@ -260,11 +315,11 @@ Graphics.create_triangle = function() {
   const r = a * (3 ** 0.5) / 6;
   const z = -1.0;
 
-  const center_left = [0, z, h - r];  // reversed triangle by left
-  const center_right = [a / 2, z, r]; // actual triangle by right
+  const center_reversed = [0, z, h - r];  // reversed triangle by left
+  const center_actual = [a / 2, z, r]; // actual triangle by right
   const center_block = [a / 4, z, a * (3 ** 0.5) / 4]; // parallelogram center
 
-  const coordinates = [
+  const coordinates_set = [
     0, 0, 0,   a, 0, 0,   a / 2, 0, h, // triangle
     0, z, 0,   a, z, 0,   a / 2, z, h, // corners
   ];
@@ -276,35 +331,86 @@ Graphics.create_triangle = function() {
     5, 2, 0, 0, 3, 5, // left corner
   ];
 
+  const coordinates = [];
+
+  for (let i = 0; i < indices.length; ++i) {
+    coordinates.push(
+      coordinates_set[0 + 3 * indices[i]],
+      coordinates_set[1 + 3 * indices[i]],
+      coordinates_set[2 + 3 * indices[i]],
+    );
+  }
+
+
+  const normals = [
+
+  ];
+
+    //     // 0, +1,  0,    0, +1,  0,    0, +1,  0,
+
+    // ...[...Array(indices.length / 3)].map((_, i) =>  Array(3).fill(WebGL.create_face_normal(
+    //   coordinates[0 + 3 * indices[0 + 3 * i]],
+    //   coordinates[1 + 3 * indices[0 + 3 * i]],
+    //   coordinates[2 + 3 * indices[0 + 3 * i]],
+
+    //   coordinates[0 + 3 * indices[1 + 3 * i]],
+    //   coordinates[1 + 3 * indices[1 + 3 * i]],
+    //   coordinates[2 + 3 * indices[1 + 3 * i]],
+
+    //   coordinates[0 + 3 * indices[2 + 3 * i]],
+    //   coordinates[1 + 3 * indices[2 + 3 * i]],
+    //   coordinates[2 + 3 * indices[2 + 3 * i]],
+    // )).flat()).flat(),
+
+
+
+
+  for (let i = 0; i < indices.length / 3; ++i) {
+
+    const face = [
+
+      coordinates_set[0 + 3 * indices[0 + 3 * i]],
+      coordinates_set[1 + 3 * indices[0 + 3 * i]],
+      coordinates_set[2 + 3 * indices[0 + 3 * i]],
+
+      coordinates_set[0 + 3 * indices[1 + 3 * i]],
+      coordinates_set[1 + 3 * indices[1 + 3 * i]],
+      coordinates_set[2 + 3 * indices[1 + 3 * i]],
+
+      coordinates_set[0 + 3 * indices[2 + 3 * i]],
+      coordinates_set[1 + 3 * indices[2 + 3 * i]],
+      coordinates_set[2 + 3 * indices[2 + 3 * i]],
+
+    ];
+
+    const normal = WebGL.create_face_normal(...face);
+
+
+    normals.push(...normal, ...normal, ...normal);
+
+
+
+  }
+
+
+
+
+  // prints normals
+  console.log(Array(normals.length / 3).fill().map((_, i) => [normals[0 + 3 * i], normals[1 + 3 * i], normals[2 + 3 * i]]));
+
+
 
 
   return {
     coordinates,
-    indices,
+    indices: Array(indices.length).fill().map((_, i) => i),
 
-    normals: [
-      // 0, +1,  0,    0, +1,  0,    0, +1,  0,
-
-      ...[...Array(indices.length / 3)].map((_, i) =>  Array(3).fill(WebGL.create_face_normal(
-        coordinates[0 + 3 * indices[0 + 3 * i]],
-        coordinates[1 + 3 * indices[0 + 3 * i]],
-        coordinates[2 + 3 * indices[0 + 3 * i]],
-
-        coordinates[0 + 3 * indices[1 + 3 * i]],
-        coordinates[1 + 3 * indices[1 + 3 * i]],
-        coordinates[2 + 3 * indices[1 + 3 * i]],
-
-        coordinates[0 + 3 * indices[2 + 3 * i]],
-        coordinates[1 + 3 * indices[2 + 3 * i]],
-        coordinates[2 + 3 * indices[2 + 3 * i]],
-      )).flat()).flat(),
-
-    ],
+    normals,
 
     colors: [...Array(indices.length / 3)].map(_ => [1.0, 0.0, 0.0, 1.0,   0.0, 1.0, 0.0, 1.0,    0.0, 0.0, 1.0, 1.0,]).flat(),
 
-    center_left,
-    center_right,
+    center_reversed,
+    center_actual,
     center_block,
 
     a, h, r, z,
