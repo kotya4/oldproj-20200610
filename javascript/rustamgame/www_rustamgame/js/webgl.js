@@ -1,5 +1,6 @@
 //
 if (!vec3) var vec3 = glMatrix.vec3;
+if (!vec4) var vec4 = glMatrix.vec4;
 if (!mat4) var mat4 = glMatrix.mat4;
 
 function WebGL(screen_width, screen_height, parent, class_name) {
@@ -163,7 +164,7 @@ WebGL.create_stack_mat4 = function() {
 // projects 3d coordinates into 2d screen
 WebGL.project_vec3 = function(pos3, projection, modelview, screen_width, screen_height) {
   const posT = vec3.create();
-  vec3.transformMat4(posT, pos3, modelview);
+  vec3.transformMat4(posT, pos3, modelview); // TODO: need to invert pos3 ?
   vec3.transformMat4(posT, posT, projection);
   posT[0] /= +posT[2];
   posT[1] /= -posT[2];

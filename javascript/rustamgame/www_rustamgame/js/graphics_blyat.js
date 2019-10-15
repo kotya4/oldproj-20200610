@@ -122,28 +122,28 @@ function Graphics(screen_width, screen_height, parent) {
 
   // -------------------------------------
 
-  function stroke_2d_line(from_pos, to_pos, mat, text) {
+  function stroke_2d_line(pos1, pos2, mat, text) {
     const vec = vec3.create();
 
-    vec3.transformMat4(vec, from_pos, mat);
-    const from = [
+    vec3.transformMat4(vec, [-pos1[0], -pos1[1], -pos1[2]], mat);
+    const tpos1 = [
       (vec[0] / +vec[2] + 1) * (screen_width >> 1),
       (vec[1] / -vec[2] + 1) * (screen_height >> 1),
     ];
 
-    vec3.transformMat4(vec, to_pos, mat);
-    const to = [
+    vec3.transformMat4(vec, [-pos2[0], -pos2[1], -pos2[2]], mat);
+    const tpos2 = [
       (vec[0] / +vec[2] + 1) * (screen_width >> 1),
       (vec[1] / -vec[2] + 1) * (screen_height >> 1),
     ];
 
     ctx.beginPath();
-    ctx.moveTo(...from);
-    ctx.lineTo(...to);
+    ctx.moveTo(...tpos1);
+    ctx.lineTo(...tpos2);
     ctx.stroke();
 
     if (text) {
-      ctx.fillText(text, ...to);
+      ctx.fillText(text, ...tpos2);
     }
   }
 
@@ -238,9 +238,16 @@ function Graphics(screen_width, screen_height, parent) {
 
     mat4.translate(mat_projection, mat_projection, camera_position);
 
+
+
     mat4.rotateX(mat_projection, mat_projection, scene_rotation[0]);
     mat4.rotateY(mat_projection, mat_projection, scene_rotation[1]);
     mat4.rotateZ(mat_projection, mat_projection, scene_rotation[2]);
+
+    // const sina = Math.sin(timestamp * 0.001);
+    // mat4.translate(mat_projection, mat_projection, [sina, 0, 0]);
+    // ctx.fillStyle = 'white';
+    // ctx.fillText(sina, 10, 10);
 
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -314,6 +321,18 @@ function Graphics(screen_width, screen_height, parent) {
       }
     }
 
+    // AXIS
+
+    ctx.font = '12px "Arial"';
+
+    ctx.strokeStyle = ctx.fillStyle = 'red';
+    stroke_2d_line([0, 0, 0], [1, 0, 0], mat_projection, 'X');
+    ctx.strokeStyle = ctx.fillStyle = 'green';
+    stroke_2d_line([0, 0, 0], [0, 1, 0], mat_projection, 'Y');
+    ctx.strokeStyle = ctx.fillStyle = 'blue';
+    stroke_2d_line([0, 0, 0], [0, 0, 1], mat_projection, 'Z');
+
+
     // draw directional light direction
 
     ctx.strokeStyle = 'yellow';
@@ -325,7 +344,7 @@ function Graphics(screen_width, screen_height, parent) {
 
 
 
-
+    // ------------ WORKING NDC, refactor it ---------------
 
     function project (out, vec, m) {
       var x = vec[0],
@@ -386,82 +405,9 @@ function Graphics(screen_width, screen_height, parent) {
     unproject(output, point, viewport, invProjView)
 
 
-    ctx.fillStyle = 'green';
-    ctx.strokeStyle = 'green';
+    ctx.fillStyle = ctx.strokeStyle = 'green';
     ctx.lineWidth = 2;
     stroke_2d_line([0, 0, 0], output, mat_projection, 'mouse');
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // // mouse ndc
-
-    // const canvas_rect = ctx.canvas.getBoundingClientRect();
-    // const ox = canvas_rect.x;
-    // const oy = canvas_rect.y;
-
-    // const px = Mouse.coordinates[0] - ox;
-    // const py = Mouse.coordinates[1] - oy;
-    // const pz = 0; // near plane
-
-    // const nx = 2 * px / screen_width - 1;
-    // const ny = 1 - 2 * py / screen_height;
-    // const nz = -1;
-    // const nw = 1;
-
-    // const invP = mat4.invert([], mat_projection);
-
-
-
-
-
-    // const q = vec4.create();
-    // vec4.transformMat4(q, [nx, ny, nz, nw], invP);
-
-
-    // const scale = 1 / q[2];
-
-    // const uproj = [q[0] * scale, q[1] * scale, q[2] * scale, q[3] * scale];
-
-
-    // ctx.fillStyle = 'green';
-    // ctx.strokeStyle = 'green';
-    // ctx.lineWidth = 2;
-    // stroke_2d_line([0, 0, 0], uproj, mat_projection, 'mouse');
-
-
-    // ctx.fillStyle = 'white';
-    // ctx.font = '20px "Arial"';
-    // ctx.fillText(uproj.map(e => (e * 100 | 0) / 100), 100, 100);
-
 
 
 
