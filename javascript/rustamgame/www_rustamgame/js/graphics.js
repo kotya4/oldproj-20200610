@@ -8,6 +8,8 @@ function Graphics(screen_width, screen_height, parent) {
   const { gl, webgl } = WebGL(screen_width, screen_height, parent);
   const ctx = Canvas(screen_width, screen_height, parent);
 
+  const bounding_client_rect = ctx.canvas.getBoundingClientRect(); // must be same as gl.canvas
+
   const shader_program = webgl.create_shader_program(
     webgl.compile_shader(gl.VERTEX_SHADER, DATA__vertex_shader),
     webgl.compile_shader(gl.FRAGMENT_SHADER, DATA__fragment_shader),
@@ -122,29 +124,17 @@ function Graphics(screen_width, screen_height, parent) {
 
   // -------------------------------------
 
-  function stroke_2d_line(from_pos, to_pos, mat, text) {
-    const vec = vec3.create();
-
-    vec3.transformMat4(vec, from_pos, mat);
-    const from = [
-      (vec[0] / +vec[2] + 1) * (screen_width >> 1),
-      (vec[1] / -vec[2] + 1) * (screen_height >> 1),
-    ];
-
-    vec3.transformMat4(vec, to_pos, mat);
-    const to = [
-      (vec[0] / +vec[2] + 1) * (screen_width >> 1),
-      (vec[1] / -vec[2] + 1) * (screen_height >> 1),
-    ];
+  function project_line(v1, v2, m, text = null) {
+    const viewport = [0, 0, screen_width, screen_height];
+    v1 = WebGL.project([], v1, viewport, m);
+    v2 = WebGL.project([], v2, viewport, m);
 
     ctx.beginPath();
-    ctx.moveTo(...from);
-    ctx.lineTo(...to);
+    ctx.moveTo(...v1);
+    ctx.lineTo(...v2);
     ctx.stroke();
 
-    if (text) {
-      ctx.fillText(text, ...to);
-    }
+    if (text) ctx.fillText(text, ...v2);
   }
 
   // ---------------------------------------
@@ -169,22 +159,18 @@ function Graphics(screen_width, screen_height, parent) {
   const Mouse = {
     event: null,
     coordinates: [-1, -1],
+
     onmouseup(e) {
       this.event = null;
-      // rebuild pickboxes
-      // if (pickboxes_rebuild_request) {
-      //   pickboxes_rebuild_request = false;
-      //   pickboxes_need_rebuild = true;
-      //   //
-      // }
+
     },
     onmousedown(e) {
       this.event = e;
       //player_x++;
     },
     onmousemove(e) {
-      this.coordinates[0] = e.clientX;
-      this.coordinates[1] = e.clientY;
+      this.coordinates[0] = e.clientX - bounding_client_rect.x;
+      this.coordinates[1] = e.clientY - bounding_client_rect.y;
 
       if (this.event) {
         // pickboxes_rebuild_request = true;
@@ -232,15 +218,42 @@ function Graphics(screen_width, screen_height, parent) {
     ctx.fillStyle = 'black';
     ctx.fillText(map_get(player_x, player_y), POSX, POSY);
 
-
     // push matrices
     Stack.push(mat_projection);
+
+    const sina = Math.sin(timestamp * 0.001) * 1;
+    mat4.translate(mat_projection, mat_projection, [0, sina, 0]);
+    ctx.font = '12px "Arial"';
+    ctx.strokeStyle = ctx.fillStyle = 'yellow';
+    ctx.fillText(sina, 10, 10);
 
     mat4.translate(mat_projection, mat_projection, camera_position);
 
     mat4.rotateX(mat_projection, mat_projection, scene_rotation[0]);
     mat4.rotateY(mat_projection, mat_projection, scene_rotation[1]);
     mat4.rotateZ(mat_projection, mat_projection, scene_rotation[2]);
+
+    // AXIS
+    ctx.font = '12px "Arial"';
+    ctx.strokeStyle = ctx.fillStyle = 'red';
+    project_line([0, 0, 0], [1, 0, 0], mat_projection, 'X');
+    ctx.strokeStyle = ctx.fillStyle = 'green';
+    project_line([0, 0, 0], [0, 1, 0], mat_projection, 'Y');
+    ctx.strokeStyle = ctx.fillStyle = 'blue';
+    project_line([0, 0, 0], [0, 0, 1], mat_projection, 'Z');
+
+
+    // draw directional light direction
+    ctx.font = '12px "Arial"';
+    ctx.strokeStyle = ctx.fillStyle = 'yellow';
+    project_line([0, 0, 0], directional_light_direction, mat_projection, 'LIGHT');
+
+    // unprojected mouse pos projected on screen (debug info lol)
+    const mouse_pos = WebGL.unproject([], [...Mouse.coordinates, 0], [0, 0, screen_width, screen_height], mat_projection);
+    ctx.lineWidth = 2;
+    ctx.fillStyle = ctx.strokeStyle = 'green';
+    project_line([0, 0, 0], mouse_pos, mat_projection, 'mouse');
+
 
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -313,157 +326,6 @@ function Graphics(screen_width, screen_height, parent) {
 
       }
     }
-
-    // draw directional light direction
-
-    ctx.strokeStyle = 'yellow';
-    ctx.fillStyle = 'yellow';
-    ctx.font = '12px "Arial"';
-    stroke_2d_line([0, 0, 0], directional_light_direction, mat_projection, 'LIGHT');
-
-
-
-
-
-
-
-    function project (out, vec, m) {
-      var x = vec[0],
-        y = vec[1],
-        z = vec[2],
-        a00 = m[0], a01 = m[1], a02 = m[2], a03 = m[3],
-        a10 = m[4], a11 = m[5], a12 = m[6], a13 = m[7],
-        a20 = m[8], a21 = m[9], a22 = m[10], a23 = m[11],
-        a30 = m[12], a31 = m[13], a32 = m[14], a33 = m[15]
-
-      var lw = 1 / (x * a03 + y * a13 + z * a23 + a33)
-
-      out[0] = (x * a00 + y * a10 + z * a20 + a30) * lw
-      out[1] = (x * a01 + y * a11 + z * a21 + a31) * lw
-      out[2] = (x * a02 + y * a12 + z * a22 + a32) * lw
-      return out
-    }
-
-
-    function unproject (out, vec, viewport, invProjectionView) {
-      var viewX = viewport[0],
-        viewY = viewport[1],
-        viewWidth = viewport[2],
-        viewHeight = viewport[3]
-
-      var x = vec[0],
-        y = vec[1],
-        z = vec[2]
-
-      x = x - viewX
-      y = viewHeight - y - 1
-      y = y - viewY
-
-      out[0] = (2 * x) / viewWidth - 1
-      out[1] = (2 * y) / viewHeight - 1
-      out[2] = 2 * z - 1
-      return project(out, out, invProjectionView)
-    }
-
-
-    var invProjView = mat4.invert([], mat_projection)
-
-    //viewport bounds
-    var viewport = [0, 0, screen_width, screen_height]
-
-    //2D point in screen space
-    //z=0 means "near plane"
-    const canvas_rect = ctx.canvas.getBoundingClientRect();
-    const ox = canvas_rect.x;
-    const oy = canvas_rect.y;
-    const px = Mouse.coordinates[0] - ox;
-    const py = Mouse.coordinates[1] - oy;
-    var point = [px, py, 0]
-
-    //vec3 output
-    var output = []
-
-    unproject(output, point, viewport, invProjView)
-
-
-    ctx.fillStyle = 'green';
-    ctx.strokeStyle = 'green';
-    ctx.lineWidth = 2;
-    stroke_2d_line([0, 0, 0], output, mat_projection, 'mouse');
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // // mouse ndc
-
-    // const canvas_rect = ctx.canvas.getBoundingClientRect();
-    // const ox = canvas_rect.x;
-    // const oy = canvas_rect.y;
-
-    // const px = Mouse.coordinates[0] - ox;
-    // const py = Mouse.coordinates[1] - oy;
-    // const pz = 0; // near plane
-
-    // const nx = 2 * px / screen_width - 1;
-    // const ny = 1 - 2 * py / screen_height;
-    // const nz = -1;
-    // const nw = 1;
-
-    // const invP = mat4.invert([], mat_projection);
-
-
-
-
-
-    // const q = vec4.create();
-    // vec4.transformMat4(q, [nx, ny, nz, nw], invP);
-
-
-    // const scale = 1 / q[2];
-
-    // const uproj = [q[0] * scale, q[1] * scale, q[2] * scale, q[3] * scale];
-
-
-    // ctx.fillStyle = 'green';
-    // ctx.strokeStyle = 'green';
-    // ctx.lineWidth = 2;
-    // stroke_2d_line([0, 0, 0], uproj, mat_projection, 'mouse');
-
-
-    // ctx.fillStyle = 'white';
-    // ctx.font = '20px "Arial"';
-    // ctx.fillText(uproj.map(e => (e * 100 | 0) / 100), 100, 100);
-
-
-
 
     // pop matrices
 

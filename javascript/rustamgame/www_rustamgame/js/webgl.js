@@ -19,7 +19,7 @@ function WebGL(screen_width, screen_height, parent, class_name) {
 
   // preparing scene
 
-  gl.viewport(0,0, gl.canvas.width, gl.canvas.height);
+  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
   gl.enable(gl.DEPTH_TEST);
   gl.depthFunc(gl.LEQUAL);
@@ -152,7 +152,7 @@ function WebGL(screen_width, screen_height, parent, class_name) {
 
 
 // creates matrices stack
-WebGL.create_stack_mat4 = function() {
+WebGL.create_stack_mat4 = function () {
   return {
     stack: [],
     pop(m) { mat4.copy(m, this.stack.pop()); },
@@ -161,22 +161,47 @@ WebGL.create_stack_mat4 = function() {
 }
 
 
-// projects 3d coordinates into 2d screen
-WebGL.project_vec3 = function(pos3, projection, modelview, screen_width, screen_height) {
-  const posT = vec3.create();
-  vec3.transformMat4(posT, pos3, modelview); // TODO: need to invert pos3 ?
-  vec3.transformMat4(posT, posT, projection);
-  posT[0] /= +posT[2];
-  posT[1] /= -posT[2];
-  return [
-    (posT[0] + 1) * (screen_width >> 1),
-    (posT[1] + 1) * (screen_height >> 1),
-  ];
+// projects 3D point into 2D screen space
+WebGL.project = function (out, v, viewport, m) {
+  const view_x = viewport[0];
+  const view_y = viewport[1];
+  const view_w = viewport[2];
+  const view_h = viewport[3];
+
+  const [x, y, z] = vec3.transformMat4([], v, m);
+
+  out[0] = (x / +z + 1) * (view_w >> 1) + view_x;
+  out[1] = (y / -z + 1) * (view_h >> 1) + view_y;
+
+  return out;
+}
+
+
+ // unprojects 2D point in screen space into 3D space
+WebGL.unproject = function (out, v, viewport, m) {
+  const view_x = viewport[0];
+  const view_y = viewport[1];
+  const view_w = viewport[2];
+  const view_h = viewport[3];
+
+  // Normalized Device Coordinates (NDC)
+  const _x = 2 * (         v[0]     - view_x) / view_w - 1;
+  const _y = 2 * (view_h - v[1] - 1 - view_y) / view_h - 1;
+  const _z = 2 * (         v[2]             )          - 1; // v[2]=0 means "near plane"
+
+  m = mat4.invert([], m);
+  const [x, y, z, w] = vec4.transformMat4([], [_x, _y, _z, 1], m);
+
+  out[0] = x / w;
+  out[1] = y / w;
+  out[2] = z / w;
+
+  return out;
 }
 
 
 // creates face normal
-WebGL.create_face_normal = function(x1, y1, z1, x2, y2, z2, x3, y3, z3) {
+WebGL.create_face_normal = function (x1, y1, z1, x2, y2, z2, x3, y3, z3) {
   // source: https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
   //       p2
   //  _   ^  \
@@ -201,7 +226,7 @@ WebGL.create_face_normal = function(x1, y1, z1, x2, y2, z2, x3, y3, z3) {
 
 
 // defines cube
-WebGL.create_cube = function() {
+WebGL.create_cube = function () {
   /*
    * (1) 0,1--->1,1 (2)
    *      ^[1]/ ^|
@@ -261,7 +286,7 @@ WebGL.create_cube = function() {
 
 
 // starts demo
-WebGL.render_demo = function(parent) {
+WebGL.render_demo = function (parent) {
   parent = parent || document.body;
 
   const screen_width = 400;
