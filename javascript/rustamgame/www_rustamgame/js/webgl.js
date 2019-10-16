@@ -179,18 +179,19 @@ WebGL.project = function (out, v, viewport, m) {
 
  // unprojects 2D point in screen space into 3D space
 WebGL.unproject = function (out, v, viewport, m) {
+  // source: https://github.com/Jam3/camera-unproject
   const view_x = viewport[0];
   const view_y = viewport[1];
   const view_w = viewport[2];
   const view_h = viewport[3];
 
   // Normalized Device Coordinates (NDC)
-  const _x = 2 * (         v[0]     - view_x) / view_w - 1;
-  const _y = 2 * (view_h - v[1] - 1 - view_y) / view_h - 1;
-  const _z = 2 * (         v[2]             )          - 1; // v[2]=0 means "near plane"
+  const nx = 2 * (         v[0] - view_x    ) / view_w - 1;
+  const ny = 2 * (view_h - v[1] - view_y - 1) / view_h - 1;
+  const nz = 2 * (         v[2]|0           )          - 1; // v[2]=0 means "near plane"
 
   m = mat4.invert([], m);
-  const [x, y, z, w] = vec4.transformMat4([], [_x, _y, _z, 1], m);
+  const [x, y, z, w] = vec4.transformMat4([], [nx, ny, nz, 1], m);
 
   out[0] = x / w;
   out[1] = y / w;

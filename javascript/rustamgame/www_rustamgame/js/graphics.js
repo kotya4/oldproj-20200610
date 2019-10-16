@@ -12,6 +12,7 @@ function Graphics(screen_width, screen_height, parent) {
 
   const shader_program = webgl.create_shader_program(
     webgl.compile_shader(gl.VERTEX_SHADER, DATA__vertex_shader),
+    // webgl.compile_shader(gl.VERTEX_SHADER, DATA__vertex_shader_with_instancing),
     webgl.compile_shader(gl.FRAGMENT_SHADER, DATA__fragment_shader),
   );
 
@@ -23,6 +24,7 @@ function Graphics(screen_width, screen_height, parent) {
       color: 'u_directional_light.color',
       direction: 'u_directional_light.direction',
     },
+    offsets: 'u_offsets',
   });
 
   const a_loc = webgl.define_attrib_locations(shader_program, {
@@ -37,13 +39,20 @@ function Graphics(screen_width, screen_height, parent) {
   webgl.set_directional_light(u_loc.directional_light, [1.0, 1.0, 1.0], directional_light_direction);
 
   const triangle = Graphics.create_triangle();
+
   console.log(triangle);
 
   const color_array_buffer = webgl.bind_array_buffer(a_loc.color, new Float32Array(triangle.colors), 4, gl.FLOAT);
-
   webgl.bind_array_buffer(a_loc.coord,  new Float32Array(triangle.coordinates), 3, gl.FLOAT);
   webgl.bind_array_buffer(a_loc.normal, new Float32Array(triangle.normals),     3, gl.FLOAT);
   webgl.bind_element_buffer(new Uint16Array(triangle.indices));
+
+
+  // const mdncube = Graphics.create_MDN_cube();
+  // webgl.bind_array_buffer(a_loc.color, new Float32Array(mdncube.colors),       4, gl.FLOAT);
+  // webgl.bind_array_buffer(a_loc.coord,  new Float32Array(mdncube.coordinates), 3, gl.FLOAT);
+  // webgl.bind_array_buffer(a_loc.normal, new Float32Array(mdncube.normals),     3, gl.FLOAT);
+  // webgl.bind_element_buffer(new Uint16Array(mdncube.indices));
 
 
   const mat_projection = mat4.create();
@@ -84,16 +93,17 @@ function Graphics(screen_width, screen_height, parent) {
   // const map = [...Array(map_width * map_height)].map(e => 1 + Math.random() * 9 | 0);
 
 
-  let player_x = 0;
-  let player_y = 0;
-  const player_view_dist_x = 10;
-  const player_view_dist_y = 10;
-
   function map_get(x, y) {
     if ((x %= map_width) < 0) x += map_width;
     if ((y %= map_height) < 0) y += map_height;
     return map[x + y * map_width];
   }
+
+
+  let player_x = 0;
+  let player_y = 0;
+  const player_view_dist_x = 10;
+  const player_view_dist_y = 10;
 
   // ------------ map configuration -------
 
@@ -134,23 +144,41 @@ function Graphics(screen_width, screen_height, parent) {
     ctx.lineTo(...v2);
     ctx.stroke();
 
-    if (text) ctx.fillText(text, ...v2);
+    if (text !== null) ctx.fillText(text, ...v2);
   }
 
-  // ---------------------------------------
 
-  let pickboxes_rebuild_request = false;
-  let pickboxes_need_rebuild = false;
+  function draw_vector_source(v, m, radius, text = null) {
+    const viewport = [0, 0, screen_width, screen_height];
+    v1 = WebGL.project([], v, viewport, m);
 
-  const pickboxes = [];
+    ctx.beginPath();
+    ctx.arc(...v1, radius, 0, 2 * Math.PI);
+    ctx.stroke();
 
-
-  // Normalized Device Coordinates
-
-  function getNDC(px, py, viewport_w, viewport_h) {
-
+    if (text !== null) ctx.fillText(text, v1[0] + radius, v1[1]);
   }
 
+
+  function draw_normals(coordinates, normals, indices) {
+    for (let i = 0; i < indices.length; ++i) {
+      const index = indices[i];
+
+      const v1 = [
+        coordinates[0 + 3 * index],
+        coordinates[1 + 3 * index],
+        coordinates[2 + 3 * index],
+      ];
+
+      const v2 = [
+        v1[0] + normals[0 + 3 * index] * (1 + 0.1 * i),
+        v1[1] + normals[1 + 3 * index] * (1 + 0.1 * i),
+        v1[2] + normals[2 + 3 * index] * (1 + 0.1 * i),
+      ];
+
+      project_line(v1, v2, mat_projection, i);
+    }
+  }
 
 
   // ------------ mouse ------------------
@@ -173,14 +201,11 @@ function Graphics(screen_width, screen_height, parent) {
       this.coordinates[1] = e.clientY - bounding_client_rect.y;
 
       if (this.event) {
-        // pickboxes_rebuild_request = true;
-
         const dx = e.clientX - this.event.clientX;
         const dy = e.clientY - this.event.clientY;
         //scene_rotation[0] += +dy * scene_rotation_speed;
         scene_rotation[1] += +dx * scene_rotation_speed;
         //scene_rotation[2] += 0;
-
         this.event = e;
       }
     },
@@ -190,7 +215,13 @@ function Graphics(screen_width, screen_height, parent) {
   window.addEventListener('mousedown', e => Mouse.onmousedown(e), false);
   window.addEventListener('mousemove', e => Mouse.onmousemove(e), false);
 
+
+  // ------------- INSTANCING ----------------
+  // source: https://habr.com/ru/post/352962/
+
+
   // ------------ render -----------------
+
 
   let old_timestamp = 0;
 
@@ -198,13 +229,62 @@ function Graphics(screen_width, screen_height, parent) {
     const elapsed = timestamp - old_timestamp;
     old_timestamp = timestamp;
 
+    // clear 2D scene
+    ctx.save();
     ctx.clearRect(0, 0, screen_width, screen_height);
+    ctx.lineWidth = 2;
 
     // fps
     const FPS = 1000 / elapsed | 0;
     ctx.font = '24px "Arial"';
     ctx.fillStyle = 'white';
     ctx.fillText(FPS, 30, 30);
+
+    // push projection
+    Stack.push(mat_projection);
+
+
+    // sets camera
+    mat4.translate(mat_projection, mat_projection, camera_position);
+    mat4.rotateX(mat_projection, mat_projection, scene_rotation[0]);
+    mat4.rotateY(mat_projection, mat_projection, scene_rotation[1]);
+    mat4.rotateZ(mat_projection, mat_projection, scene_rotation[2]);
+
+
+    // AXIS
+    ctx.font = '12px "Arial"';
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = ctx.fillStyle = 'red';
+    project_line([0, 0, 0], [0.5, 0, 0], mat_projection, 'X');
+    ctx.strokeStyle = ctx.fillStyle = 'green';
+    project_line([0, 0, 0], [0, 0.5, 0], mat_projection, 'Y');
+    ctx.strokeStyle = ctx.fillStyle = 'blue';
+    project_line([0, 0, 0], [0, 0, 0.5], mat_projection, 'Z');
+
+
+    // debug camera moving (camera movement inverted)
+    // const sina = Math.sin(timestamp * 0.001) * 1;
+    // ctx.font = '12px "Arial"';
+    // ctx.strokeStyle = ctx.fillStyle = 'yellow';
+    // ctx.fillText(sina, 10, 10);
+    // mat4.translate(mat_projection, mat_projection, [sina, 0, 0]);
+
+
+    // draw directional light direction
+    ctx.fillStyle = ctx.strokeStyle = 'yellow';
+    draw_vector_source(directional_light_direction, mat_projection, 5, 'LIGHT');
+    project_line(directional_light_direction, [
+      directional_light_direction[0] * 0.9,
+      directional_light_direction[1] * 0.9,
+      directional_light_direction[2] * 0.9,
+    ], mat_projection);
+
+
+    // unprojected mouse pos projected on screen (debug info lol)
+    const mouse_pos = WebGL.unproject([], [...Mouse.coordinates, 0], [0, 0, screen_width, screen_height], mat_projection);
+    ctx.fillStyle = ctx.strokeStyle = 'white';
+    draw_vector_source(mouse_pos, mat_projection, 5, 'MOUSE');
+
 
     // player
     const RADIUS = 60 / camera_zoom;
@@ -214,68 +294,27 @@ function Graphics(screen_width, screen_height, parent) {
     ctx.beginPath();
     ctx.arc(POSX, POSY, RADIUS, 0, 2 * Math.PI);
     ctx.fill();
-    ctx.font = '12px "Arial"';
+    const TEXT_HEIGHT = 20;
+    ctx.font = `${TEXT_HEIGHT}px "Arial"`;
     ctx.fillStyle = 'black';
-    ctx.fillText(map_get(player_x, player_y), POSX, POSY);
-
-    // push matrices
-    Stack.push(mat_projection);
-
-    const sina = Math.sin(timestamp * 0.001) * 1;
-    mat4.translate(mat_projection, mat_projection, [0, sina, 0]);
-    ctx.font = '12px "Arial"';
-    ctx.strokeStyle = ctx.fillStyle = 'yellow';
-    ctx.fillText(sina, 10, 10);
-
-    mat4.translate(mat_projection, mat_projection, camera_position);
-
-    mat4.rotateX(mat_projection, mat_projection, scene_rotation[0]);
-    mat4.rotateY(mat_projection, mat_projection, scene_rotation[1]);
-    mat4.rotateZ(mat_projection, mat_projection, scene_rotation[2]);
-
-    // AXIS
-    ctx.font = '12px "Arial"';
-    ctx.strokeStyle = ctx.fillStyle = 'red';
-    project_line([0, 0, 0], [1, 0, 0], mat_projection, 'X');
-    ctx.strokeStyle = ctx.fillStyle = 'green';
-    project_line([0, 0, 0], [0, 1, 0], mat_projection, 'Y');
-    ctx.strokeStyle = ctx.fillStyle = 'blue';
-    project_line([0, 0, 0], [0, 0, 1], mat_projection, 'Z');
+    const TEXT = map_get(player_x, player_y);
+    ctx.fillText(map_get(player_x, player_y), POSX - ctx.measureText(TEXT).width / 2, POSY + TEXT_HEIGHT / 2.5);
 
 
-    // draw directional light direction
-    ctx.font = '12px "Arial"';
-    ctx.strokeStyle = ctx.fillStyle = 'yellow';
-    project_line([0, 0, 0], directional_light_direction, mat_projection, 'LIGHT');
-
-    // unprojected mouse pos projected on screen (debug info lol)
-    const mouse_pos = WebGL.unproject([], [...Mouse.coordinates, 0], [0, 0, screen_width, screen_height], mat_projection);
-    ctx.lineWidth = 2;
-    ctx.fillStyle = ctx.strokeStyle = 'green';
-    project_line([0, 0, 0], mouse_pos, mat_projection, 'mouse');
-
-
-
+    // clear 3D scene
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
 
 
-    // let pickboxes_rebuild_flag = false;
-    // if (pickboxes_need_rebuild) {
-    //   pickboxes_need_rebuild = false;
-    //   pickboxes_rebuild_flag = true;
-    // }
-
-    //player_x = 1;
-
-    for (let y = -player_view_dist_y / 2 | 0; y < +player_view_dist_y / 2 | 0; ++y)
+    for (let y = -(player_view_dist_y >> 1); y < +(player_view_dist_y >> 1); ++y)
       for (let x = -player_view_dist_x; x < +player_view_dist_x; ++x)
     // for (let y = 0; y < 1; ++y)
     //   for (let x = 0; x < 1; ++x)
     {
       const map_value = map_get(x + player_x, y + player_y);
-      if (map_value) {
 
+      if (map_value) {
+        // sets color depending on map value
         const figure_color = DATA__randomcolors[map_value];
         webgl.bind_array_buffer(
           a_loc.color,
@@ -285,52 +324,32 @@ function Graphics(screen_width, screen_height, parent) {
           color_array_buffer,
         );
 
-        Stack.push(mat_modelview);
-
-
+        // model offset
+        mat4.identity(mat_modelview);
         mat4.translate(mat_modelview, mat_modelview, [
           (x + y - 1) * triangle.a / 2,
           0,
           y * triangle.h - triangle.r * ((player_x & 1) + 1),
         ]);
-
-
         if (x + player_x & 1) {
           mat4.translate(mat_modelview, mat_modelview, [triangle.a, 0, triangle.h]);
           mat4.rotateY(mat_modelview, mat_modelview, Math.PI);
         }
 
-
-        const view = mat4.create();
-        mat4.multiply(view, mat_projection, mat_modelview);
-
-        const normal = mat4.create();
-        mat4.invert(normal, mat_modelview);
-        mat4.transpose(normal, normal);
-
-        gl.uniformMatrix4fv(u_loc.view, false, view);
-        gl.uniformMatrix4fv(u_loc.normal, false, normal);
-
+        // draw
+        gl.uniformMatrix4fv(u_loc.view, false, mat4.multiply([], mat_projection, mat_modelview));
+        gl.uniformMatrix4fv(u_loc.normal, false, mat4.transpose([], mat4.invert([], mat_modelview)));
         gl.drawElements(gl.TRIANGLES, triangle.indices.length, gl.UNSIGNED_SHORT, 0);
-
-
-
-        // ctx.fillStyle = 'green';
-
-
-        // ctx.fillRect(0, 0, 10, 10);
-
-
-
-        Stack.pop(mat_modelview);
-
       }
     }
 
-    // pop matrices
 
+    // pop projection
     Stack.pop(mat_projection);
 
+
+    // request redraw
+    ctx.restore();
     requestAnimationFrame(render);
   }
 
@@ -399,4 +418,108 @@ Graphics.create_triangle = function() {
 
     a, h, r, z,
   };
+}
+
+
+
+Graphics.create_MDN_cube = function() {
+  // source: https://github.com/mdn/webgl-examples/blob/gh-pages/tutorial/sample7/webgl-demo.js
+
+  const coordinates = [
+    // Front face
+    -1.0, -1.0,  1.0,
+     1.0, -1.0,  1.0,
+     1.0,  1.0,  1.0,
+    -1.0,  1.0,  1.0,
+
+    // Back face
+    -1.0, -1.0, -1.0,
+    -1.0,  1.0, -1.0,
+     1.0,  1.0, -1.0,
+     1.0, -1.0, -1.0,
+
+    // Top face
+    -1.0,  1.0, -1.0,
+    -1.0,  1.0,  1.0,
+     1.0,  1.0,  1.0,
+     1.0,  1.0, -1.0,
+
+    // Bottom face
+    -1.0, -1.0, -1.0,
+     1.0, -1.0, -1.0,
+     1.0, -1.0,  1.0,
+    -1.0, -1.0,  1.0,
+
+    // Right face
+     1.0, -1.0, -1.0,
+     1.0,  1.0, -1.0,
+     1.0,  1.0,  1.0,
+     1.0, -1.0,  1.0,
+
+    // Left face
+    -1.0, -1.0, -1.0,
+    -1.0, -1.0,  1.0,
+    -1.0,  1.0,  1.0,
+    -1.0,  1.0, -1.0,
+  ];
+
+
+  const normals = [
+    // Front
+     0.0,  0.0,  1.0,
+     0.0,  0.0,  1.0,
+     0.0,  0.0,  1.0,
+     0.0,  0.0,  1.0,
+
+    // Back
+     0.0,  0.0, -1.0,
+     0.0,  0.0, -1.0,
+     0.0,  0.0, -1.0,
+     0.0,  0.0, -1.0,
+
+    // Top
+     0.0,  1.0,  0.0,
+     0.0,  1.0,  0.0,
+     0.0,  1.0,  0.0,
+     0.0,  1.0,  0.0,
+
+    // Bottom
+     0.0, -1.0,  0.0,
+     0.0, -1.0,  0.0,
+     0.0, -1.0,  0.0,
+     0.0, -1.0,  0.0,
+
+    // Right
+     1.0,  0.0,  0.0,
+     1.0,  0.0,  0.0,
+     1.0,  0.0,  0.0,
+     1.0,  0.0,  0.0,
+
+    // Left
+    -1.0,  0.0,  0.0,
+    -1.0,  0.0,  0.0,
+    -1.0,  0.0,  0.0,
+    -1.0,  0.0,  0.0
+  ];
+
+  const indices = [
+    0,  1,  2,      0,  2,  3,    // front
+    4,  5,  6,      4,  6,  7,    // back
+    8,  9,  10,     8,  10, 11,   // top
+    12, 13, 14,     12, 14, 15,   // bottom
+    16, 17, 18,     16, 18, 19,   // right
+    20, 21, 22,     20, 22, 23,   // left
+  ];
+
+  const colors = Array(indices.length).fill([1.0, 0.0, 0.0, 1.0,   0.0, 1.0, 0.0, 1.0,    0.0, 0.0, 1.0, 1.0]).flat();
+
+
+  return {
+
+    coordinates,
+    normals,
+    indices,
+    colors,
+
+  }
 }
