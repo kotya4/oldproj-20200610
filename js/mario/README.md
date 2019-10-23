@@ -1,6 +1,3 @@
-# [![](http://kotya.tk/favicon.ico)](http://kotya.tk) mario
-
----
 
 Марио-подобный 2d платформер
 

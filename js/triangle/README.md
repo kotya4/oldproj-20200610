@@ -1,6 +1,3 @@
-# [![](http://kotya.tk/favicon.ico)](http://kotya.tk) triangle
-
----
 
 Трехмерная проекция вращающегося треугольника
 
