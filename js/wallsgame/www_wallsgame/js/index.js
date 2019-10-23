@@ -10,27 +10,42 @@ window.onload = async () => {
   ctx.imageSmoothingEnabled = false;
 
   // draw random lines
-  ctx.strokeStyle = 'red';
+  const lines = [];
+  ctx.strokeStyle = 'blue';
   ctx.lineWidth = 2;
   for (let i = 0; i < 10; ++i) {
     const points_x = [0, 0].map(_ => Math.random() * display_width);
     const points_y = [0, 0].map(_ => Math.random() * display_height);
+    lines.push([points_x[0], points_y[0]], [points_x[1], points_y[1]]);
     ctx.beginPath();
     ctx.moveTo(points_x[0], points_y[0]);
     ctx.lineTo(points_x[1], points_y[1]);
     ctx.stroke();
   }
 
+  const fixedsys = await Fixedsys8x12(80, 25);
+
+  // fixedsys.screen.buffer.forEach(e => e.char_index = Math.random() * 256 | 0);
+
+
+
+
+
+
+
+  fixedsys.screen.flush(ctx);
+
+
   // symbolize
 
-  const ascii = await Symbolyzer.create_ascii_table(BASE64__ascii);
-  const chset = Symbolyzer.create_charset(ascii);
+  // const ascii = await Symbolyzer.create_ascii_table(BASE64__ascii);
+  // const chset = Symbolyzer.create_charset(ascii);
 
-  console.time('time2');
+  // console.time('time2');
 
-  Symbolyzer.symbolize(ascii, chset, ctx, 0, 0, display_width, display_height, 30);
+  // Symbolyzer.symbolize(ascii, chset, ctx, 0, 0, display_width, display_height, 30);
 
-  console.timeEnd('time2');
+  // console.timeEnd('time2');
 
 }
 
@@ -116,6 +131,6 @@ ______________________________
 
 ------------------------------
 
-                __,,,....--------
--------~''''````
+
+_,.-~'"`
 */
