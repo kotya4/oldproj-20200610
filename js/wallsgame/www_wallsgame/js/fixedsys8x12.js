@@ -62,9 +62,6 @@ async function Fixedsys8x12(buffer_width, buffer_height) {
 
   // prepares symbolic line drawer
   function prepare_liner(screen) {
-    //
-    const h_chars = ['`', '\'"', '-', ',.', '_'];
-    const v_chars = ['/', '|!;:', '\\'];
     // liner instance
     return {
       screen,
@@ -78,29 +75,41 @@ async function Fixedsys8x12(buffer_width, buffer_height) {
         const step = is_horisontal ? Math.abs(dx) : Math.abs(dy);
         dx /= step;
         dy /= step;
+
+        DEBUG.div.innerText = `${dx * 100 | 0} ${dy * 100 | 0}`;
+
         for (let i = 0; i < step; ++i) {
-          const x = x1 | 0;
-          const y = y1 | 0;
+          const x = ~~x1;
+          const y = ~~y1;
           const px = x1 - x;
           const py = y1 - y;
-          if (is_horisontal) {
-            const cc = h_chars[py * h_chars.length | 0];
-            const ci = cc.charCodeAt(Math.random() * cc.length | 0);
-            this.screen.get(x, y).char_index = ci;
-          } else {
-            // TODO: rules for vertical lines must be more complex
-            if (dx * dy > 0 ^ px > 0.5) {
-              const cc = h_chars[px * h_chars.length | 0];
-              const ci = cc.charCodeAt(Math.random() * cc.length | 0);
-              this.screen.get(x, y).char_index = ci;
-            } else {
-              const cc = v_chars[px * v_chars.length | 0];
-              const ci = cc.charCodeAt(Math.random() * cc.length | 0);
-              this.screen.get(x, y).char_index = ci;
-            }
-          }
           x1 += dx;
           y1 += dy;
+
+          DEBUG.div.innerText += `\n${px * 100 | 0} ${py * 100 | 0}`;
+
+          // TIP: брутфорс -- сила, ежжи
+          if (Math.abs(dx) === 1.00 && Math.abs(dy) <= 0.35) {
+            /**/ if (0.00 <= py && py < 0.20) this.screen.get(x, y).char_index =   '`'.charCodeAt(                    0);
+            else if (0.20 <= py && py < 0.40) this.screen.get(x, y).char_index = '\'"'.charCodeAt(Math.random() * 2 | 0);
+            else if (0.40 <= py && py < 0.60) this.screen.get(x, y).char_index =   '-'.charCodeAt(                    0);
+            else if (0.60 <= py && py < 0.80) this.screen.get(x, y).char_index =  ',.'.charCodeAt(Math.random() * 2 | 0);
+            else if (0.80 <= py && py < 1.00) this.screen.get(x, y).char_index =   '_'.charCodeAt(                    0);
+          } else if (Math.abs(dx) === 1.00 && Math.abs(dy) <= 0.66) {
+            /**/ if (0.00 <= py && py < 0.33) this.screen.get(x, y).char_index = '`\'"'.charCodeAt(Math.random() * 3 | 0);
+            else if (0.33 <= py && py < 0.66) this.screen.get(x, y).char_index =  '\\/'.charCodeAt(      dy * dx < 0 | 0);
+            else if (0.66 <= py && py < 1.00) this.screen.get(x, y).char_index =   '.,'.charCodeAt(Math.random() * 2 | 0);
+          } else if (Math.abs(dx) === 1.00 && Math.abs(dy) <= 1.00) {
+            /**/ if (0.00 <= py && py < 0.10) this.screen.get(x, y).char_index =   '`'.charCodeAt(                    0);
+            else if (0.10 <= py && py < 0.33) this.screen.get(x, y).char_index = '\'"'.charCodeAt(Math.random() * 2 | 0);
+            else if (0.33 <= py && py < 0.80) this.screen.get(x, y).char_index = '\\/'.charCodeAt(      dy * dx < 0 | 0);
+            else if (0.80 <= py && py < 1.00) this.screen.get(x, y).char_index =  '.,'.charCodeAt(Math.random() * 2 | 0);
+          }
+
+          else {
+            this.screen.get(x, y).char_index = 1;
+          }
+
         }
       },
     };
