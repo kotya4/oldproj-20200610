@@ -1,7 +1,7 @@
 //
 async function Fixedsys8x12(buffer_width, buffer_height) {
   // prepares font from base64/path source
-  async function prepare_from_source(src) {
+  async function prepare_font(src) {
     // creates image from source
     const img = new Image();
     img.src = src;
@@ -12,7 +12,7 @@ async function Fixedsys8x12(buffer_width, buffer_height) {
     ctx.canvas.height = img.height;
     ctx.canvas.width = img.width;
     ctx.drawImage(img, 0, 0);
-    // returns info
+    // returns font instance
     return {
       img,
       ctx,
@@ -46,7 +46,8 @@ async function Fixedsys8x12(buffer_width, buffer_height) {
           o.char_index = 0;
       },
       get(x, y) {
-        return this.buffer[x + y * this.width];
+        // returns pixel-object at position (x, y) nor first pixel (0, 0).
+        return this.buffer[x + y * this.width] || this.buffer[0];
       },
       flush(ctx, screen_x = 0, screen_y = 0) {
         for (let i = 0; i < this.buffer.length; ++i) {
@@ -59,23 +60,62 @@ async function Fixedsys8x12(buffer_width, buffer_height) {
     };
   }
 
-
-  function prepare_line_drawer() {
-
-    const horisontal = [['_'], [',', '.'], ['-', '~'], ["'", '"'], ['`']];
-    const vertical = [['/'], ['|', '!',';', ':'], ['\\']];
-
+  // prepares symbolic line drawer
+  function prepare_liner(screen) {
+    //
+    const h_chars = ['`', '\'"', '-', ',.', '_'];
+    const v_chars = ['/', '|!;:', '\\'];
+    // liner instance
+    return {
+      screen,
+      stroke(x1, y1, x2, y2) {
+        // source: https://en.wikipedia.org/wiki/Digital_differential_analyzer_(graphics_algorithm)
+        x1 /= this.screen.font.char_width, y1 /= this.screen.font.char_height;
+        x2 /= this.screen.font.char_width, y2 /= this.screen.font.char_height;
+        let dx = x2 - x1;
+        let dy = y2 - y1;
+        const is_horisontal = Math.abs(dx) > Math.abs(dy);
+        const step = is_horisontal ? Math.abs(dx) : Math.abs(dy);
+        dx /= step;
+        dy /= step;
+        for (let i = 0; i < step; ++i) {
+          const x = x1 | 0;
+          const y = y1 | 0;
+          const px = x1 - x;
+          const py = y1 - y;
+          if (is_horisontal) {
+            const cc = h_chars[py * h_chars.length | 0];
+            const ci = cc.charCodeAt(Math.random() * cc.length | 0);
+            this.screen.get(x, y).char_index = ci;
+          } else {
+            // TODO: rules for vertical lines must be more complex
+            if (dx * dy > 0 ^ px > 0.5) {
+              const cc = h_chars[px * h_chars.length | 0];
+              const ci = cc.charCodeAt(Math.random() * cc.length | 0);
+              this.screen.get(x, y).char_index = ci;
+            } else {
+              const cc = v_chars[px * v_chars.length | 0];
+              const ci = cc.charCodeAt(Math.random() * cc.length | 0);
+              this.screen.get(x, y).char_index = ci;
+            }
+          }
+          x1 += dx;
+          y1 += dy;
+        }
+      },
+    };
   }
 
 
   // creates font instance
-  const font = await prepare_from_source(Fixedsys8x12.base64);
+  const font = await prepare_font(Fixedsys8x12.base64);
   // creates screen buffer instance
   const screen = prepare_buffer(font, buffer_width, buffer_height);
+  // creates liner instance
+  const liner = prepare_liner(screen);
 
 
-
-  return { font, screen };
+  return { font, screen, liner };
 }
 
 
