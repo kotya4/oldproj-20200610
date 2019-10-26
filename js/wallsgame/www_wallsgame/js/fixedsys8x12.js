@@ -62,21 +62,29 @@ async function Fixedsys8x12(buffer_width, buffer_height) {
 
   // prepares symbolic line drawer
   function prepare_liner(screen) {
+    // makes wise choise
+    const choose_char_code = s => s.charCodeAt(Math.random() * s.length | 0);
     // liner instance
     return {
       screen,
-      stroke(x1, y1, x2, y2) {
+      stroke(x1, y1, x2, y2, overlap = false) {
         // source: https://en.wikipedia.org/wiki/Digital_differential_analyzer_(graphics_algorithm)
         x1 /= this.screen.font.char_width, y1 /= this.screen.font.char_height;
         x2 /= this.screen.font.char_width, y2 /= this.screen.font.char_height;
+        x1 = (x1 | 0) + 0.5;
+        y1 = (y1 | 0) + 0.5;
+        x2 = (x2 | 0) + 0.5;
+        y2 = (y2 | 0) + 0.5;
+
         let dx = x2 - x1;
         let dy = y2 - y1;
-        const is_horisontal = Math.abs(dx) > Math.abs(dy);
-        const step = is_horisontal ? Math.abs(dx) : Math.abs(dy);
+        const step = Math.abs(dx) > Math.abs(dy) ? Math.abs(dx) : Math.abs(dy);
         dx /= step;
         dy /= step;
+        const abdx = Math.abs(dx);
+        const abdy = Math.abs(dy);
 
-        DEBUG.div.innerText = `${dx * 100 | 0} ${dy * 100 | 0}`;
+        const SLASH = '\\/'[dy * dx < 0 | 0];
 
         for (let i = 0; i < step; ++i) {
           const x = ~~x1;
@@ -86,30 +94,26 @@ async function Fixedsys8x12(buffer_width, buffer_height) {
           x1 += dx;
           y1 += dy;
 
-          DEBUG.div.innerText += `\n${px * 100 | 0} ${py * 100 | 0}`;
+          const pixel = this.screen.get(x, y);
 
-          // TIP: брутфорс -- сила, ежжи
-          if (Math.abs(dx) === 1.00 && Math.abs(dy) <= 0.35) {
-            /**/ if (0.00 <= py && py < 0.20) this.screen.get(x, y).char_index =   '`'.charCodeAt(                    0);
-            else if (0.20 <= py && py < 0.40) this.screen.get(x, y).char_index = '\'"'.charCodeAt(Math.random() * 2 | 0);
-            else if (0.40 <= py && py < 0.60) this.screen.get(x, y).char_index =   '-'.charCodeAt(                    0);
-            else if (0.60 <= py && py < 0.80) this.screen.get(x, y).char_index =  ',.'.charCodeAt(Math.random() * 2 | 0);
-            else if (0.80 <= py && py < 1.00) this.screen.get(x, y).char_index =   '_'.charCodeAt(                    0);
-          } else if (Math.abs(dx) === 1.00 && Math.abs(dy) <= 0.66) {
-            /**/ if (0.00 <= py && py < 0.33) this.screen.get(x, y).char_index = '`\'"'.charCodeAt(Math.random() * 3 | 0);
-            else if (0.33 <= py && py < 0.66) this.screen.get(x, y).char_index =  '\\/'.charCodeAt(      dy * dx < 0 | 0);
-            else if (0.66 <= py && py < 1.00) this.screen.get(x, y).char_index =   '.,'.charCodeAt(Math.random() * 2 | 0);
-          } else if (Math.abs(dx) === 1.00 && Math.abs(dy) <= 1.00) {
-            /**/ if (0.00 <= py && py < 0.10) this.screen.get(x, y).char_index =   '`'.charCodeAt(                    0);
-            else if (0.10 <= py && py < 0.33) this.screen.get(x, y).char_index = '\'"'.charCodeAt(Math.random() * 2 | 0);
-            else if (0.33 <= py && py < 0.80) this.screen.get(x, y).char_index = '\\/'.charCodeAt(      dy * dx < 0 | 0);
-            else if (0.80 <= py && py < 1.00) this.screen.get(x, y).char_index =  '.,'.charCodeAt(Math.random() * 2 | 0);
-          }
+          if (!overlap && pixel.char_index !== 0)
+            pixel.char_index = choose_char_code('x');
+
+          else if (abdx !== 1)
+            pixel.char_index = choose_char_code(px < abdx ? (Math.random() < (abdx - 0.5) ? SLASH : ';:') : '|');
+
+          else if (abdy <= 0.35)
+            pixel.char_index = ['`', `'"`, '-', '.,', '_'].map(choose_char_code)[py * 5 | 0];
+
+          else if (abdy <= 0.66)
+            pixel.char_index = [`\`'"`, SLASH, '.,'].map(choose_char_code)[py * 3 | 0];
 
           else {
-            this.screen.get(x, y).char_index = 1;
+            if      (py < 0.10) pixel.char_index = choose_char_code('`');
+            else if (py < 0.33) pixel.char_index = choose_char_code(`'"`);
+            else if (py < 0.80) pixel.char_index = choose_char_code(SLASH);
+            else                pixel.char_index = choose_char_code('.,');
           }
-
         }
       },
     };
