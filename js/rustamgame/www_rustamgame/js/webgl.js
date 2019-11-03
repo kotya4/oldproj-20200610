@@ -151,6 +151,18 @@ function WebGL(screen_width, screen_height, parent, class_name) {
 }
 
 
+// orthogonal projection
+WebGL.ortho = function (m, z_near, z_far) {
+  // source: https://community.khronos.org/t/constructing-an-orthographic-matrix-for-2d-drawing/62270
+  m = mat4.identity(m);
+  m[0] = -1.0;
+  m[5] = +1.0;
+  m[10] = +2.0 / (z_far - z_near);
+  m[14] = (z_far + z_near) / (z_far - z_near);
+  return m;
+}
+
+
 // creates matrices stack
 WebGL.create_stack_mat4 = function () {
   return {
@@ -170,8 +182,8 @@ WebGL.project = function (out, v, viewport, m) {
 
   const [x, y, z] = vec3.transformMat4([], v, m);
 
-  out[0] = (x / +z + 1) * (view_w >> 1) + view_x;
-  out[1] = (y / -z + 1) * (view_h >> 1) + view_y;
+  out[0] = (x / +(z || 1) + 1) * (view_w >> 1) + view_x;
+  out[1] = (y / -(z || 1) + 1) * (view_h >> 1) + view_y;
 
   return out;
 }
