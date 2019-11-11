@@ -12,29 +12,21 @@ function Graphics(screen_width, screen_height, parent) {
   );
 
   const u_loc = webgl.define_uniform_locations(shader_program, {
-    projection_view: 'u_projection_view',
-    normal_matrix: 'u_normal_matrix',
-    modelview: 'u_modelview',
-
-    camera_position: 'u_camera_position',
-
-    ambient_light: 'u_ambient_light',
-    directional_light: {
-      color: 'u_directional_light.color',
-      direction: 'u_directional_light.direction',
+    u_camera_position: null,
+    u_projectionview:  null,
+    u_normal_matrix:   null,
+    u_modelview:       null,
+    u_sampler:         null,
+    u_pointlights: {
+      _array_: 5,
+      position:  null,
+      constant:  null,
+      linear:    null,
+      quadratic: null,
+      ambient:   null,
+      diffuse:   null,
+      specular:  null,
     },
-
-    pointlights_0: {
-      position: 'u_pointlights[0].position',
-      constant: 'u_pointlights[0].constant',
-      linear: 'u_pointlights[0].linear',
-      quadratic: 'u_pointlights[0].quadratic',
-      ambient: 'u_pointlights[0].ambient',
-      diffuse: 'u_pointlights[0].diffuse',
-      specular: 'u_pointlights[0].specular',
-    },
-
-    sampler: 'u_sampler',
   });
 
   const a_loc = webgl.define_attrib_locations(shader_program, {
@@ -44,16 +36,9 @@ function Graphics(screen_width, screen_height, parent) {
     normal: 'a_normal',
   });
 
-  // const directional_light_direction = [0.5, -0.75, 1];
-  // webgl.set_ambient_light(u_loc.ambient_light, [0.5, 0.5, 0.5]);
-  // webgl.set_directional_light(u_loc.directional_light, [1.0, 1.0, 1.0], directional_light_direction);
-
   const cube = WebGL.create_cube();
-  webgl.bind_array_buffer(a_loc.texuv, new Float32Array(cube.texcoords), 2, gl.FLOAT);
-  webgl.bind_array_buffer(a_loc.color, new Float32Array(cube.colors), 4, gl.FLOAT);
-  webgl.bind_array_buffer(a_loc.coord, new Float32Array(cube.coordinates), 3, gl.FLOAT);
-  webgl.bind_array_buffer(a_loc.normal, new Float32Array(cube.normals), 3, gl.FLOAT);
-  webgl.bind_element_buffer(new Uint16Array(cube.indices));
+  const lamp = WebGL.create_cube();
+  lamp.normals = lamp.normals.map(e => -e);
 
   const mat_projection = mat4.perspective([], Math.PI / 4, screen_width / screen_height, 0.1, 100.0);
   const mat_modelview = mat4.create();
@@ -140,15 +125,37 @@ function Graphics(screen_width, screen_height, parent) {
 
   // ========================================
 
-  const pointlight = {
-    position:  [+1.0, -1, -2.0],
-    constant:   1.0,
-    linear:     0.09,
-    quadratic:  0.032,
-    ambient:   [0.0, 0.0, 0.1],
-    diffuse:   [0.0, 0.0, 1.0],
-    specular:  [1.0, 1.0, 1.0],
-  };
+  const pointlights = Array(5).fill().map(_ => ({
+    position:  [Math.random() * 10, Math.random() * 10, Math.random() * 10],
+    constant:  +1.0,
+    linear:    +0.09,
+    quadratic: +0.032,
+    ambient:   [0.0, 0.0, 0.0],
+    diffuse:   Array(3).fill().map(_ => Math.random()),
+    specular:  Array(3).fill().map(_ => Math.random()),
+  }));
+
+  // const pointlight = {
+  //   position:  [+5.0, +5, +5.0],
+  //   constant:  +1.0,
+  //   linear:    +0.09,
+  //   quadratic: +0.032,
+  //   ambient:   [0.0, 0.0, 0.0],
+  //   diffuse:   [0.0, 0.0, 1.0],
+  //   specular:  [1.0, 0.0, 0.0],
+  // };
+
+  const models = Array(10).fill().map(() => {
+    const m = mat4.create();
+    mat4.translate(m, m, [Math.random() * 10, Math.random() * 10, Math.random() * 10]);
+    mat4.rotateX(m, m, Math.random() * Math.PI * 2);
+    mat4.rotateY(m, m, Math.random() * Math.PI * 2);
+    mat4.rotateZ(m, m, Math.random() * Math.PI * 2);
+    return m;
+  });
+
+
+  //==============================================================
 
 
   // ------------ render -----------------
@@ -167,6 +174,7 @@ function Graphics(screen_width, screen_height, parent) {
     ctx.clearRect(...webgl.viewport);
 
     //==============================================================
+
 
     // fps
     FPS_update_timer += elapsed;
@@ -248,69 +256,79 @@ function Graphics(screen_width, screen_height, parent) {
       }));
     }
 
-    //mat4.rotateY(mat_projection, mat_projection, 0.001 * timestamp);
 
-    // pointlight.position[0] += Math.cos(timestamp * 0.001) * 0.04;
-    // pointlight.position[1] += Math.sin(timestamp * 0.001) * 0.04;
-    // pointlight.position[2] += Math.sin(timestamp * 0.001) * 0.04;
+    pointlights.forEach(e => {
+      e.position[0] += Math.cos(timestamp * 0.001) * 0.1 * e.diffuse[0];
+      e.position[1] += Math.sin(timestamp * 0.001) * 0.1 * e.diffuse[0];
+      e.position[2] += Math.sin(timestamp * 0.001) * 0.1 * e.diffuse[0];
+    });
+
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-    if (texture) {
-      gl.activeTexture(gl.TEXTURE0);
-      gl.bindTexture(gl.TEXTURE_2D, texture);
-      gl.uniform1i(u_loc.sampler, 0);
-    }
 
-    Stack.push(mat_modelview);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.uniform1i(u_loc.sampler, 0);
 
-    mat4.translate(mat_modelview, mat_modelview, [Math.cos(timestamp * 0.001) * 2 - 2, Math.sin(timestamp * 0.001) * 2 - 2, 0]);
 
-    gl.uniformMatrix4fv(u_loc.projection_view, false, mat4.multiply([], mat_projection, mat_modelview));
-    gl.uniformMatrix4fv(u_loc.normal_matrix, false, mat4.transpose([], mat4.invert([], mat_modelview)));
+    pointlights.forEach((e, i) => {
 
-    gl.uniformMatrix4fv(u_loc.modelview, false, mat_modelview);
+      gl.uniform3fv(u_loc.u_pointlights[i].position,  e.position);
+      gl.uniform1f (u_loc.u_pointlights[i].constant,  e.constant);
+      gl.uniform1f (u_loc.u_pointlights[i].linear,    e.linear);
+      gl.uniform1f (u_loc.u_pointlights[i].quadratic, e.quadratic);
+      gl.uniform3fv(u_loc.u_pointlights[i].ambient,   e.ambient);
+      gl.uniform3fv(u_loc.u_pointlights[i].diffuse,   e.diffuse);
+      gl.uniform3fv(u_loc.u_pointlights[i].specular,  e.specular);
+
+    });
 
     gl.uniform3fv(u_loc.camera_position, Camera.position);
 
-    gl.uniform3fv(u_loc.pointlights_0.position,  pointlight.position);
-    gl.uniform1f (u_loc.pointlights_0.constant,  pointlight.constant);
-    gl.uniform1f (u_loc.pointlights_0.linear,    pointlight.linear);
-    gl.uniform1f (u_loc.pointlights_0.quadratic, pointlight.quadratic);
-    gl.uniform3fv(u_loc.pointlights_0.ambient,   pointlight.ambient);
-    gl.uniform3fv(u_loc.pointlights_0.diffuse,   pointlight.diffuse);
-    gl.uniform3fv(u_loc.pointlights_0.specular,  pointlight.specular);
+    webgl.bind_array_buffer(a_loc.texuv, new Float32Array(cube.texcoords), 2, gl.FLOAT);
+    webgl.bind_array_buffer(a_loc.color, new Float32Array(cube.colors), 4, gl.FLOAT);
+    webgl.bind_array_buffer(a_loc.coord, new Float32Array(cube.coordinates), 3, gl.FLOAT);
+    webgl.bind_array_buffer(a_loc.normal, new Float32Array(cube.normals), 3, gl.FLOAT);
+    webgl.bind_element_buffer(new Uint16Array(cube.indices));
 
-    gl.drawElements(gl.TRIANGLES, cube.indices.length, gl.UNSIGNED_SHORT, 0);
+    for (let i = 0; i < models.length; ++i) {
+      const modelview = models[i];
 
-    Stack.pop(mat_modelview);
+      gl.uniformMatrix4fv(u_loc.u_projectionview, false, mat4.multiply([], mat_projection, modelview));
+      gl.uniformMatrix4fv(u_loc.u_normal_matrix, false, mat4.transpose([], mat4.invert([], modelview)));
+      gl.uniformMatrix4fv(u_loc.u_modelview, false, modelview);
+      gl.drawElements(gl.TRIANGLES, cube.indices.length, gl.UNSIGNED_SHORT, 0);
+    }
 
-    const pointlight_pos = WebGL.project([], pointlight.position, webgl.viewport, mat_projection);
+    const pointlight_pos = WebGL.project([], [0, 0, 0], webgl.viewport, mat_projection);
     ctx.strokeStyle = ctx.fillStyle = 'white';
     ctx.beginPath();
     ctx.moveTo(pointlight_pos[0], pointlight_pos[1]);
     ctx.ellipse(pointlight_pos[0], pointlight_pos[1], 5, 5, 0, 0, Math.PI * 2);
     ctx.fill();
 
+    webgl.bind_array_buffer(a_loc.texuv, new Float32Array(lamp.texcoords), 2, gl.FLOAT);
+    webgl.bind_array_buffer(a_loc.color, new Float32Array(lamp.colors), 4, gl.FLOAT);
+    webgl.bind_array_buffer(a_loc.coord, new Float32Array(lamp.coordinates), 3, gl.FLOAT);
+    webgl.bind_array_buffer(a_loc.normal, new Float32Array(lamp.normals), 3, gl.FLOAT);
+    webgl.bind_element_buffer(new Uint16Array(lamp.indices));
 
-    gl.uniform3fv(u_loc.pointlights_0.position,  pointlight.position);
-    gl.uniform1f (u_loc.pointlights_0.constant,  pointlight.constant);
-    gl.uniform1f (u_loc.pointlights_0.linear,    pointlight.linear);
-    gl.uniform1f (u_loc.pointlights_0.quadratic, pointlight.quadratic);
-    gl.uniform3fv(u_loc.pointlights_0.ambient,   pointlight.ambient);
-    gl.uniform3fv(u_loc.pointlights_0.diffuse,   pointlight.diffuse);
-    gl.uniform3fv(u_loc.pointlights_0.specular,  pointlight.specular);
 
-    Stack.push(mat_modelview);
-    mat4.translate(mat_modelview, mat_modelview, pointlight.position.map(e => (e - 0.3 / 2)));
-    //mat4.scale(mat_modelview, mat_modelview, Array(3).fill(0.3));
-    gl.uniformMatrix4fv(u_loc.projection_view, false, mat4.multiply([], mat_projection, mat_modelview));
-    const normal = mat4.create();
-    mat4.invert(normal, mat_modelview);
-    mat4.transpose(normal, normal);
-    gl.uniformMatrix4fv(u_loc.normal_matrix, false, normal);
-    gl.drawElements(gl.TRIANGLES, cube.indices.length, gl.UNSIGNED_SHORT, 0);
-    Stack.pop(mat_modelview);
+    pointlights.forEach(e => {
+
+      const lamp_scale = 0.3;
+      const modelview = mat4.create();
+      mat4.translate(modelview, modelview, e.position.map(e => (e - lamp_scale / 2)));
+      mat4.scale(modelview, modelview, Array(3).fill(lamp_scale));
+      gl.uniformMatrix4fv(u_loc.u_projectionview, false, mat4.multiply([], mat_projection, modelview));
+      gl.uniformMatrix4fv(u_loc.u_normal_matrix, false, mat4.transpose([], mat4.invert([], modelview)));
+      gl.uniformMatrix4fv(u_loc.u_modelview, false, modelview);
+      gl.drawElements(gl.TRIANGLES, lamp.indices.length, gl.UNSIGNED_SHORT, 0);
+
+
+    });
+
 
     Stack.pop(mat_projection);
 

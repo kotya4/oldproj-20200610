@@ -75,12 +75,30 @@ function WebGL(screen_width, screen_height, parent, webgl_class, canvas_class) {
   }
 
 
-  function define_uniform_locations(shader_program, dict) {
+  function define_uniform_locations(shader_program, dict, prefix = '') {
     for (let key in dict) {
-      if (typeof dict[key] === 'string') {
-        dict[key] = gl.getUniformLocation(shader_program, dict[key]);
-      } else if (typeof dict[key] === 'object') {
-        define_uniform_locations(shader_program, dict[key]);
+      if (dict[key] instanceof Object) {
+        if ('_array_' in dict[key]) {
+          const arrlen = dict[key]['_array_'];
+          delete dict[key]['_array_'];
+          dict[key] = Array(arrlen).fill().map((_, i) => {
+            let name = `${key}[${i}]`;
+            if (prefix.length) name = `${prefix}.${name}`;
+            return define_uniform_locations(shader_program, {...dict[key]}, name);
+          });
+        } else {
+          let name = key;
+          if (prefix.length) name = `${prefix}.${name}`;
+          define_uniform_locations(shader_program, dict[key], name);
+        }
+      } else if (typeof dict[key] === 'string') {
+        let name = dict[key];
+        if (prefix.length) name = `${prefix}.${name}`;
+        dict[key] = gl.getUniformLocation(shader_program, name);
+      } else {
+        let name = key;
+        if (prefix.length) name = `${prefix}.${name}`;
+        dict[key] = gl.getUniformLocation(shader_program, name);
       }
     }
     return dict;
@@ -95,24 +113,6 @@ function WebGL(screen_width, screen_height, parent, webgl_class, canvas_class) {
       }
     }
     return dict;
-  }
-
-
-  function set_ambient_light(u_location, color) {
-    gl.uniform3f(u_location, ...color);
-  }
-
-
-  function set_directional_light(u_location, color, direction) {
-    if (!('color' in u_location)
-    ||  !('direction' in u_location))
-    {
-      throw Error('set_directional_light:: u_location has no attribute color and/or direction');
-    }
-    const normalized = vec3.create();
-    vec3.normalize(normalized, direction);
-    gl.uniform3f(u_location.color, ...color);
-    gl.uniform3f(u_location.direction, ...normalized);
   }
 
 
@@ -165,8 +165,6 @@ function WebGL(screen_width, screen_height, parent, webgl_class, canvas_class) {
       create_shader_program,
       define_uniform_locations,
       define_attrib_locations,
-      set_ambient_light,
-      set_directional_light,
       create_texture,
       bind_array_buffer,
       bind_element_buffer,
