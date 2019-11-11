@@ -3,63 +3,95 @@ const DATA__vertex_shader =
 `
   precision mediump float;
 
-  struct DirectionalLight {
-    vec3 direction;
-    vec3 color;
-  };
-
   attribute vec2 a_texuv;
   attribute vec3 a_coord;
   attribute vec4 a_color;
   attribute vec3 a_normal;
 
-  uniform mat4 u_view;
-  uniform mat4 u_normal;
-  uniform vec3 u_ambient_light;
-  uniform DirectionalLight u_directional_light;
+
+  uniform mat4 u_projection_view;
+  uniform mat4 u_modelview;
+
+
 
   varying vec2 v_texuv;
-  varying vec3 v_light;
   varying vec4 v_color;
+  varying vec3 v_normal;
+  varying vec3 v_coord;
+
 
   void main(void) {
     v_texuv = a_texuv;
     v_color = a_color;
+    v_normal = a_normal;
+    v_coord = vec3(u_modelview * vec4(a_coord, 1.0));
 
-    vec4 transformed_normal = u_normal * vec4(a_normal, 1.0);
-    float directional_light = max(dot(transformed_normal.xyz, u_directional_light.direction), 0.0);
-    v_light = u_ambient_light + (u_directional_light.color * directional_light);
-
-    gl_Position = u_view * vec4(a_coord, 1.0);
-    gl_PointSize = 3.0;
+    gl_Position = u_projection_view * vec4(a_coord, 1.0);
   }
+
 `;
 
 const DATA__fragment_shader =
 `
   precision mediump float;
 
+  struct PointLight {
+    vec3 position;
+
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+
+    float constant;
+    float linear;
+    float quadratic;
+  };
+
+  uniform PointLight u_pointlights [1];
+
+
   uniform sampler2D u_sampler;
 
+
   varying vec2 v_texuv;
-  varying vec3 v_light;
   varying vec4 v_color;
+  varying vec3 v_normal;
+  varying vec3 v_coord;
+
+  uniform mat4 u_normal_matrix;
+  uniform vec3 u_camera_position;
+
+
+  vec3 calc_point_light(PointLight, vec3, vec3, vec3);
+
 
   void main(void) {
-    // gl_FragColor = vec4(v_color.rgb * v_light, v_color.a);
-    gl_FragColor = vec4(texture2D(u_sampler, v_texuv).rgb * v_color.rgb * v_light, 1.);
-  }
-`;
+    vec3 normal = normalize(vec3(u_normal_matrix * vec4(v_normal, 1.0)));
+    vec3 camera_direction = normalize(u_camera_position - v_coord);
 
-const DATA__randomcolors = [
-  [0.85, 0.02, 0.24, 1.0],
-  [0.05, 0.03, 0.73, 1.0],
-  [0.38, 0.35, 0.58, 1.0],
-  [0.35, 0.01, 0.83, 1.0],
-  [0.24, 0.29, 0.80, 1.0],
-  [0.51, 0.01, 0.37, 1.0],
-  [0.66, 0.06, 0.12, 1.0],
-  [0.49, 0.07, 0.13, 1.0],
-  [0.43, 0.05, 0.06, 1.0],
-  [0.11, 0.95, 0.25, 1.0],
-];
+    vec3 light = calc_point_light(u_pointlights[0], normal, v_coord, camera_direction);
+    gl_FragColor = vec4(texture2D(u_sampler, v_texuv).rgb * light, 1.0);
+
+  }
+
+
+  vec3 calc_point_light(PointLight light, vec3 normal, vec3 fragment_position, vec3 camera_direction) {
+    // source: https://learnopengl.com/Lighting/Multiple-lights
+    vec3 light_direction = normalize(light.position - fragment_position);
+    // diffuse shading
+    float diff = max(dot(normal, light_direction), 0.0);
+    // specular shading
+    vec3 reflect_direction = reflect(-light_direction, normal);
+    float spec = pow(max(dot(camera_direction, reflect_direction), 0.0), 1.0); // material.shininess
+    // attenuation
+    float distance    = length(light.position - fragment_position);
+    float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));
+    // combine results
+    vec3 ambient  = light.ambient  *        vec3(1.0) * attenuation; // vec3(texture(material.diffuse, v_texuv))
+    vec3 diffuse  = light.diffuse  * diff * vec3(1.0) * attenuation; // vec3(texture(material.diffuse, v_texuv))
+    vec3 specular = light.specular * spec * vec3(0.0) * attenuation; // vec3(texture(material.specular, v_texuv))
+    return (ambient + diffuse + specular);
+  }
+
+
+`;

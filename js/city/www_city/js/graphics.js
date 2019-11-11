@@ -12,14 +12,28 @@ function Graphics(screen_width, screen_height, parent) {
   );
 
   const u_loc = webgl.define_uniform_locations(shader_program, {
-    view: 'u_view',
-    normal: 'u_normal',
+    projection_view: 'u_projection_view',
+    normal_matrix: 'u_normal_matrix',
+    modelview: 'u_modelview',
+
+    camera_position: 'u_camera_position',
+
     ambient_light: 'u_ambient_light',
     directional_light: {
       color: 'u_directional_light.color',
       direction: 'u_directional_light.direction',
     },
-    offsets: 'u_offsets',
+
+    pointlights_0: {
+      position: 'u_pointlights[0].position',
+      constant: 'u_pointlights[0].constant',
+      linear: 'u_pointlights[0].linear',
+      quadratic: 'u_pointlights[0].quadratic',
+      ambient: 'u_pointlights[0].ambient',
+      diffuse: 'u_pointlights[0].diffuse',
+      specular: 'u_pointlights[0].specular',
+    },
+
     sampler: 'u_sampler',
   });
 
@@ -30,9 +44,9 @@ function Graphics(screen_width, screen_height, parent) {
     normal: 'a_normal',
   });
 
-  const directional_light_direction = [0.5, -0.75, 1];
-  webgl.set_ambient_light(u_loc.ambient_light, [0.5, 0.5, 0.5]);
-  webgl.set_directional_light(u_loc.directional_light, [1.0, 1.0, 1.0], directional_light_direction);
+  // const directional_light_direction = [0.5, -0.75, 1];
+  // webgl.set_ambient_light(u_loc.ambient_light, [0.5, 0.5, 0.5]);
+  // webgl.set_directional_light(u_loc.directional_light, [1.0, 1.0, 1.0], directional_light_direction);
 
   const cube = WebGL.create_cube();
   webgl.bind_array_buffer(a_loc.texuv, new Float32Array(cube.texcoords), 2, gl.FLOAT);
@@ -123,6 +137,19 @@ function Graphics(screen_width, screen_height, parent) {
     texture = webgl.create_texture(img);
 
   });
+
+  // ========================================
+
+  const pointlight = {
+    position:  [+1.0, -1, -2.0],
+    constant:   1.0,
+    linear:     0.09,
+    quadratic:  0.032,
+    ambient:   [0.0, 0.0, 0.1],
+    diffuse:   [0.0, 0.0, 1.0],
+    specular:  [1.0, 1.0, 1.0],
+  };
+
 
   // ------------ render -----------------
 
@@ -221,6 +248,12 @@ function Graphics(screen_width, screen_height, parent) {
       }));
     }
 
+    //mat4.rotateY(mat_projection, mat_projection, 0.001 * timestamp);
+
+    // pointlight.position[0] += Math.cos(timestamp * 0.001) * 0.04;
+    // pointlight.position[1] += Math.sin(timestamp * 0.001) * 0.04;
+    // pointlight.position[2] += Math.sin(timestamp * 0.001) * 0.04;
+
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     if (texture) {
@@ -229,9 +262,55 @@ function Graphics(screen_width, screen_height, parent) {
       gl.uniform1i(u_loc.sampler, 0);
     }
 
-    gl.uniformMatrix4fv(u_loc.view, false, mat4.multiply([], mat_projection, mat_modelview));
-    gl.uniformMatrix4fv(u_loc.normal, false, mat4.transpose([], mat4.invert([], mat_modelview)));
+    Stack.push(mat_modelview);
+
+    mat4.translate(mat_modelview, mat_modelview, [Math.cos(timestamp * 0.001) * 2 - 2, Math.sin(timestamp * 0.001) * 2 - 2, 0]);
+
+    gl.uniformMatrix4fv(u_loc.projection_view, false, mat4.multiply([], mat_projection, mat_modelview));
+    gl.uniformMatrix4fv(u_loc.normal_matrix, false, mat4.transpose([], mat4.invert([], mat_modelview)));
+
+    gl.uniformMatrix4fv(u_loc.modelview, false, mat_modelview);
+
+    gl.uniform3fv(u_loc.camera_position, Camera.position);
+
+    gl.uniform3fv(u_loc.pointlights_0.position,  pointlight.position);
+    gl.uniform1f (u_loc.pointlights_0.constant,  pointlight.constant);
+    gl.uniform1f (u_loc.pointlights_0.linear,    pointlight.linear);
+    gl.uniform1f (u_loc.pointlights_0.quadratic, pointlight.quadratic);
+    gl.uniform3fv(u_loc.pointlights_0.ambient,   pointlight.ambient);
+    gl.uniform3fv(u_loc.pointlights_0.diffuse,   pointlight.diffuse);
+    gl.uniform3fv(u_loc.pointlights_0.specular,  pointlight.specular);
+
     gl.drawElements(gl.TRIANGLES, cube.indices.length, gl.UNSIGNED_SHORT, 0);
+
+    Stack.pop(mat_modelview);
+
+    const pointlight_pos = WebGL.project([], pointlight.position, webgl.viewport, mat_projection);
+    ctx.strokeStyle = ctx.fillStyle = 'white';
+    ctx.beginPath();
+    ctx.moveTo(pointlight_pos[0], pointlight_pos[1]);
+    ctx.ellipse(pointlight_pos[0], pointlight_pos[1], 5, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+
+    gl.uniform3fv(u_loc.pointlights_0.position,  pointlight.position);
+    gl.uniform1f (u_loc.pointlights_0.constant,  pointlight.constant);
+    gl.uniform1f (u_loc.pointlights_0.linear,    pointlight.linear);
+    gl.uniform1f (u_loc.pointlights_0.quadratic, pointlight.quadratic);
+    gl.uniform3fv(u_loc.pointlights_0.ambient,   pointlight.ambient);
+    gl.uniform3fv(u_loc.pointlights_0.diffuse,   pointlight.diffuse);
+    gl.uniform3fv(u_loc.pointlights_0.specular,  pointlight.specular);
+
+    Stack.push(mat_modelview);
+    mat4.translate(mat_modelview, mat_modelview, pointlight.position.map(e => (e - 0.3 / 2)));
+    //mat4.scale(mat_modelview, mat_modelview, Array(3).fill(0.3));
+    gl.uniformMatrix4fv(u_loc.projection_view, false, mat4.multiply([], mat_projection, mat_modelview));
+    const normal = mat4.create();
+    mat4.invert(normal, mat_modelview);
+    mat4.transpose(normal, normal);
+    gl.uniformMatrix4fv(u_loc.normal_matrix, false, normal);
+    gl.drawElements(gl.TRIANGLES, cube.indices.length, gl.UNSIGNED_SHORT, 0);
+    Stack.pop(mat_modelview);
 
     Stack.pop(mat_projection);
 

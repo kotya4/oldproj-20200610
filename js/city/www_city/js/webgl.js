@@ -53,11 +53,12 @@ function WebGL(screen_width, screen_height, parent, webgl_class, canvas_class) {
     {
       throw Error(`compile_shader:: '${type}' is not type of shader`);
     }
+    const type_str = type === gl.VERTEX_SHADER ? 'VERTEX_SHADER' : 'FRAGMENT_SHADER';
     const shader = gl.createShader(type);
     gl.shaderSource(shader, data);
     gl.compileShader(shader);
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-      throw Error(`'compile_shader:: ${type}:: ${gl.getShaderInfoLog(shader)}`);
+      throw Error(`'compile_shader:: ${type_str}:: ${gl.getShaderInfoLog(shader)}`);
     }
     return shader;
   }
@@ -379,6 +380,142 @@ WebGL.create_cube = function () {
     ],
   };
 }
+
+
+// // defines cube
+// WebGL.create_cube = function () {
+//   const positions = [
+//     // Front face
+//     -1.0, -1.0,  1.0,
+//      1.0, -1.0,  1.0,
+//      1.0,  1.0,  1.0,
+//     -1.0,  1.0,  1.0,
+
+//     // Back face
+//     -1.0, -1.0, -1.0,
+//     -1.0,  1.0, -1.0,
+//      1.0,  1.0, -1.0,
+//      1.0, -1.0, -1.0,
+
+//     // Top face
+//     -1.0,  1.0, -1.0,
+//     -1.0,  1.0,  1.0,
+//      1.0,  1.0,  1.0,
+//      1.0,  1.0, -1.0,
+
+//     // Bottom face
+//     -1.0, -1.0, -1.0,
+//      1.0, -1.0, -1.0,
+//      1.0, -1.0,  1.0,
+//     -1.0, -1.0,  1.0,
+
+//     // Right face
+//      1.0, -1.0, -1.0,
+//      1.0,  1.0, -1.0,
+//      1.0,  1.0,  1.0,
+//      1.0, -1.0,  1.0,
+
+//     // Left face
+//     -1.0, -1.0, -1.0,
+//     -1.0, -1.0,  1.0,
+//     -1.0,  1.0,  1.0,
+//     -1.0,  1.0, -1.0,
+//   ];const vertexNormals = [
+//     // Front
+//      0.0,  0.0,  1.0,
+//      0.0,  0.0,  1.0,
+//      0.0,  0.0,  1.0,
+//      0.0,  0.0,  1.0,
+
+//     // Back
+//      0.0,  0.0, -1.0,
+//      0.0,  0.0, -1.0,
+//      0.0,  0.0, -1.0,
+//      0.0,  0.0, -1.0,
+
+//     // Top
+//      0.0,  1.0,  0.0,
+//      0.0,  1.0,  0.0,
+//      0.0,  1.0,  0.0,
+//      0.0,  1.0,  0.0,
+
+//     // Bottom
+//      0.0, -1.0,  0.0,
+//      0.0, -1.0,  0.0,
+//      0.0, -1.0,  0.0,
+//      0.0, -1.0,  0.0,
+
+//     // Right
+//      1.0,  0.0,  0.0,
+//      1.0,  0.0,  0.0,
+//      1.0,  0.0,  0.0,
+//      1.0,  0.0,  0.0,
+
+//     // Left
+//     -1.0,  0.0,  0.0,
+//     -1.0,  0.0,  0.0,
+//     -1.0,  0.0,  0.0,
+//     -1.0,  0.0,  0.0
+//   ];const textureCoordinates = [
+//     // Front
+//     0.0,  0.0,
+//     1.0,  0.0,
+//     1.0,  1.0,
+//     0.0,  1.0,
+//     // Back
+//     0.0,  0.0,
+//     1.0,  0.0,
+//     1.0,  1.0,
+//     0.0,  1.0,
+//     // Top
+//     0.0,  0.0,
+//     1.0,  0.0,
+//     1.0,  1.0,
+//     0.0,  1.0,
+//     // Bottom
+//     0.0,  0.0,
+//     1.0,  0.0,
+//     1.0,  1.0,
+//     0.0,  1.0,
+//     // Right
+//     0.0,  0.0,
+//     1.0,  0.0,
+//     1.0,  1.0,
+//     0.0,  1.0,
+//     // Left
+//     0.0,  0.0,
+//     1.0,  0.0,
+//     1.0,  1.0,
+//     0.0,  1.0,
+//   ];const indices = [
+//     0,  1,  2,      0,  2,  3,    // front
+//     4,  5,  6,      4,  6,  7,    // back
+//     8,  9,  10,     8,  10, 11,   // top
+//     12, 13, 14,     12, 14, 15,   // bottom
+//     16, 17, 18,     16, 18, 19,   // right
+//     20, 21, 22,     20, 22, 23,   // left
+//   ];
+
+//   return {
+//     // coordinates
+//     coordinates: positions,
+//     // normals
+//     normals: vertexNormals,
+//     // indices
+//     indices: indices,
+//     // vertices colors
+//     colors: [
+//       1.0, 0.0, 0.0, 1.0,  1.0, 0.0, 0.0, 1.0,  1.0, 0.0, 0.0, 1.0,  1.0, 0.0, 0.0, 1.0, // front (red)
+//       0.0, 1.0, 0.0, 1.0,  0.0, 1.0, 0.0, 1.0,  0.0, 1.0, 0.0, 1.0,  0.0, 1.0, 0.0, 1.0, // back (green)
+//       1.0, 0.0, 1.0, 1.0,  1.0, 0.0, 1.0, 1.0,  1.0, 0.0, 1.0, 1.0,  1.0, 0.0, 1.0, 1.0, // botton (magenta)
+//       0.0, 1.0, 1.0, 1.0,  0.0, 1.0, 1.0, 1.0,  0.0, 1.0, 1.0, 1.0,  0.0, 1.0, 1.0, 1.0, // top (cyan)
+//       0.0, 0.0, 1.0, 1.0,  0.0, 0.0, 1.0, 1.0,  0.0, 0.0, 1.0, 1.0,  0.0, 0.0, 1.0, 1.0, // left (blue)
+//       1.0, 1.0, 0.0, 1.0,  1.0, 1.0, 0.0, 1.0,  1.0, 1.0, 0.0, 1.0,  1.0, 1.0, 0.0, 1.0, // right (yellow)
+//     ],
+//     // texture coordinates
+//     texcoords: textureCoordinates,
+//   };
+// }
 
 
 // starts demo
