@@ -141,7 +141,7 @@ function Graphics(screen_width, screen_height, parent) {
     constant:  +1.0,
     linear:    +0.09,
     quadratic: +0.032,
-    ambient:   [0.0, 0.0, 0.0],
+    ambient:   Array(3).fill().map(_ => Math.random() / 50),
     diffuse:   Array(3).fill().map(_ => Math.random()),
     specular:  Array(3).fill().map(_ => Math.random()),
     speedX: Math.random() - 0.5,
@@ -205,10 +205,12 @@ function Graphics(screen_width, screen_height, parent) {
   let FPS_update_counter = 0;
   let camera_update_timer = 0;
   let old_timestamp = 0;
+  let elapsed_acc = 0;
 
   function render(timestamp = 0) {
-    const elapsed = timestamp - old_timestamp;
+    const elapsed = Math.min(timestamp - old_timestamp, 100);
     old_timestamp = timestamp;
+    elapsed_acc += elapsed;
 
     ctx.save();
     ctx.clearRect(...webgl.viewport);
@@ -247,9 +249,9 @@ function Graphics(screen_width, screen_height, parent) {
     /////////////////////////////
 
     pointlights.forEach((e, i) => {
-      e.position[0] += Math.cos(timestamp * 0.001) * 0.01 * e.speedX * elapsed;
-      e.position[1] += Math.sin(timestamp * 0.001) * 0.01 * e.speedY * elapsed;
-      e.position[2] += Math.sin(timestamp * 0.001) * 0.01 * e.speedZ * elapsed;
+      e.position[0] += Math.cos(elapsed_acc * 0.001) * 0.01 * e.speedX * elapsed;
+      e.position[1] += Math.sin(elapsed_acc * 0.001) * 0.01 * e.speedY * elapsed;
+      e.position[2] += Math.sin(elapsed_acc * 0.001) * 0.01 * e.speedZ * elapsed;
       gl.uniform3fv(u_loc('u_pointlights')[i].position, e.position);
     });
 
@@ -296,12 +298,12 @@ function Graphics(screen_width, screen_height, parent) {
     // ZERO POINT (DEBUG)      //
     /////////////////////////////
 
-    const zp = WebGL.project([], [0, 0, 0], webgl.viewport, projection);
-    ctx.strokeStyle = ctx.fillStyle = 'white';
-    ctx.beginPath();
-    ctx.moveTo(zp[0], zp[1]);
-    ctx.ellipse(zp[0], zp[1], 2, 2, 0, 0, Math.PI * 2);
-    ctx.fill();
+    // const zp = WebGL.project([], [0, 0, 0], webgl.viewport, projection);
+    // ctx.strokeStyle = ctx.fillStyle = 'white';
+    // ctx.beginPath();
+    // ctx.moveTo(zp[0], zp[1]);
+    // ctx.ellipse(zp[0], zp[1], 2, 2, 0, 0, Math.PI * 2);
+    // ctx.fill();
 
     Stack.pop(projection);
 
