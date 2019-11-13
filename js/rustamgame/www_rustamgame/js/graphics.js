@@ -12,7 +12,6 @@ function Graphics(screen_width, screen_height, parent) {
 
   const shader_program = webgl.create_shader_program(
     webgl.compile_shader(gl.VERTEX_SHADER, DATA__vertex_shader),
-    // webgl.compile_shader(gl.VERTEX_SHADER, DATA__vertex_shader_with_instancing),
     webgl.compile_shader(gl.FRAGMENT_SHADER, DATA__fragment_shader),
   );
 
@@ -39,8 +38,6 @@ function Graphics(screen_width, screen_height, parent) {
   webgl.set_directional_light(u_loc.directional_light, [1.0, 1.0, 1.0], directional_light_direction);
 
   const triangle = Graphics.create_triangle();
-
-  console.log(triangle);
 
   const color_array_buffer = webgl.bind_array_buffer(a_loc.color, new Float32Array(triangle.colors), 4, gl.FLOAT);
   webgl.bind_array_buffer(a_loc.coord,  new Float32Array(triangle.coordinates), 3, gl.FLOAT);
@@ -69,22 +66,16 @@ function Graphics(screen_width, screen_height, parent) {
   // -------------------------------------
 
   const camera_zoom = 5;
-
   const camera_height = 0;
-
   const camera_position = [0, -camera_height, -camera_zoom];
+  const camera_rotation = [22.5 * Math.PI / 180, +0.0, +0.0];
 
-  const scene_rotation = [22.5 * Math.PI / 180, +0.0, +0.0];
+  // const scene_origin = triangle.center_actual;
+  // const scene_next_origin = triangle.center_reversed;
+  // const scene_next_origin_vector = triangle.center_actual.map((e, i) => triangle.center_reversed[i] - e);
+  // let scene_next_origin_vector_scaler = 0.0;
 
-  const scene_origin = triangle.center_actual;
-
-  const scene_next_origin = triangle.center_reversed;
-
-  const scene_next_origin_vector = triangle.center_actual.map((e, i) => triangle.center_reversed[i] - e);
-
-  let scene_next_origin_vector_scaler = 0.0;
-
-  const scene_rotation_speed = 0.005;
+  const camera_rotation_speed = 0.005;
 
 
   const map_width = 10;
@@ -134,29 +125,33 @@ function Graphics(screen_width, screen_height, parent) {
 
   // -------------------------------------
 
-  function project_line(v1, v2, m, text = null) {
+  function project_line(v1, v2, m, text = null, myctx) {
+    if (!myctx) myctx = ctx;
+
     const viewport = [0, 0, screen_width, screen_height];
     v1 = WebGL.project([], v1, viewport, m);
     v2 = WebGL.project([], v2, viewport, m);
 
-    ctx.beginPath();
-    ctx.moveTo(...v1);
-    ctx.lineTo(...v2);
-    ctx.stroke();
+    myctx.beginPath();
+    myctx.moveTo(...v1);
+    myctx.lineTo(...v2);
+    myctx.stroke();
 
-    if (text !== null) ctx.fillText(text, ...v2);
+    if (text !== null) myctx.fillText(text, ...v2);
   }
 
 
-  function draw_vector_source(v, m, radius, text = null) {
+  function draw_vector_source(v, m, radius, text = null, myctx) {
+    if (!myctx) myctx = ctx;
+
     const viewport = [0, 0, screen_width, screen_height];
     v1 = WebGL.project([], v, viewport, m);
 
-    ctx.beginPath();
-    ctx.arc(...v1, radius, 0, 2 * Math.PI);
-    ctx.stroke();
+    myctx.beginPath();
+    myctx.arc(...v1, radius, 0, 2 * Math.PI);
+    myctx.stroke();
 
-    if (text !== null) ctx.fillText(text, v1[0] + radius, v1[1]);
+    if (text !== null) myctx.fillText(text, v1[0] + radius, v1[1]);
   }
 
 
@@ -203,9 +198,9 @@ function Graphics(screen_width, screen_height, parent) {
       if (this.event) {
         const dx = e.clientX - this.event.clientX;
         const dy = e.clientY - this.event.clientY;
-        //scene_rotation[0] += +dy * scene_rotation_speed;
-        scene_rotation[1] += +dx * scene_rotation_speed;
-        //scene_rotation[2] += 0;
+        //camera_rotation[0] += +dy * camera_rotation_speed;
+        camera_rotation[1] += +dx * camera_rotation_speed;
+        //camera_rotation[2] += 0;
         this.event = e;
       }
     },
@@ -220,9 +215,68 @@ function Graphics(screen_width, screen_height, parent) {
   // source: https://habr.com/ru/post/352962/
 
 
+
+  // =============================================================================
+  // TEST GL
+  // =============================================================================
+
+  const GLTEST = (function TestGL() {
+
+    const parent = document.getElementsByClassName('graphics')[1];
+
+    const { gl, webgl } = WebGL(screen_width, screen_height, parent);
+    const ctx = Canvas(screen_width, screen_height, parent);
+
+    const shader_program = webgl.create_shader_program(
+      webgl.compile_shader(gl.VERTEX_SHADER, DATA__vertex_shader),
+      webgl.compile_shader(gl.FRAGMENT_SHADER, DATA__fragment_shader),
+    );
+
+    const u_loc = webgl.define_uniform_locations(shader_program, {
+      view: 'u_view',
+      normal: 'u_normal',
+      ambient_light: 'u_ambient_light',
+      directional_light: {
+        color: 'u_directional_light.color',
+        direction: 'u_directional_light.direction',
+      },
+      offsets: 'u_offsets',
+    });
+
+    const a_loc = webgl.define_attrib_locations(shader_program, {
+      coord: 'a_coord',
+      color: 'a_color',
+      normal: 'a_normal',
+    });
+
+    const color_array_buffer = webgl.bind_array_buffer(a_loc.color, new Float32Array(triangle.colors), 4, gl.FLOAT);
+    webgl.bind_array_buffer(a_loc.coord,  new Float32Array(triangle.coordinates), 3, gl.FLOAT);
+    webgl.bind_array_buffer(a_loc.normal, new Float32Array(triangle.normals),     3, gl.FLOAT);
+    webgl.bind_element_buffer(new Uint16Array(triangle.indices));
+
+    webgl.set_ambient_light(u_loc.ambient_light, [0.5, 0.5, 0.5]);
+    webgl.set_directional_light(u_loc.directional_light, [1.0, 1.0, 1.0], directional_light_direction);
+
+    const mat_projection = WebGL.ortho([], Z_NEAR, Z_FAR);
+
+    const camera_position = [0, 0, -10];
+    const camera_rotation = [-22.5 / 180 * Math.PI, Math.PI, 0];
+    const camera_rotation_speed = 0.005;
+    const camera_scale_scalar = 1 / 3;
+    const camera_scale = [camera_scale_scalar, camera_scale_scalar, camera_scale_scalar];
+
+    return {
+      gl, webgl, ctx, u_loc, a_loc, mat_projection, camera_position, camera_rotation, camera_rotation_speed, camera_scale, color_array_buffer,
+    };
+  })();
+
+
+
   // ------------ render -----------------
 
-
+  let FPS_update_timer = 0; // makes fps dump every so often
+  let FPS_update_counter = 0;
+  let FPS = 0;
   let old_timestamp = 0;
 
   function render(timestamp = 0) {
@@ -235,10 +289,17 @@ function Graphics(screen_width, screen_height, parent) {
     ctx.lineWidth = 2;
 
     // fps
-    const FPS = 1000 / elapsed | 0;
-    ctx.font = '24px "Arial"';
+    FPS_update_timer += elapsed;
+    FPS_update_counter++;
+    if (FPS_update_timer > 500) {
+      FPS = 1000 / (FPS_update_timer / FPS_update_counter) | 0;
+      FPS_update_counter = 0;
+      FPS_update_timer = 0;
+    }
+    ctx.font = '12px "Arial"';
     ctx.fillStyle = 'white';
-    ctx.fillText(FPS, 30, 30);
+    ctx.fillText(FPS, 0, 12);
+
 
     // push projection
     Stack.push(mat_projection);
@@ -246,9 +307,9 @@ function Graphics(screen_width, screen_height, parent) {
 
     // sets camera
     mat4.translate(mat_projection, mat_projection, camera_position);
-    mat4.rotateX(mat_projection, mat_projection, scene_rotation[0]);
-    mat4.rotateY(mat_projection, mat_projection, scene_rotation[1]);
-    mat4.rotateZ(mat_projection, mat_projection, scene_rotation[2]);
+    mat4.rotateX(mat_projection, mat_projection, camera_rotation[0]);
+    mat4.rotateY(mat_projection, mat_projection, camera_rotation[1]);
+    mat4.rotateZ(mat_projection, mat_projection, camera_rotation[2]);
 
 
     // AXIS
@@ -350,6 +411,93 @@ function Graphics(screen_width, screen_height, parent) {
 
     // request redraw
     ctx.restore();
+
+
+
+    // =============================================================================
+    // GL TEST
+    // =============================================================================
+
+
+    GLTEST.camera_rotation[1] += elapsed * 0.001;
+
+    GLTEST.ctx.save();
+    GLTEST.ctx.clearRect(0, 0, screen_width, screen_height);
+    GLTEST.ctx.lineWidth = 2;
+
+    Stack.push(GLTEST.mat_projection);
+
+    mat4.translate(GLTEST.mat_projection, GLTEST.mat_projection, GLTEST.camera_position);
+    mat4.rotateX(GLTEST.mat_projection, GLTEST.mat_projection, GLTEST.camera_rotation[0]);
+    mat4.rotateY(GLTEST.mat_projection, GLTEST.mat_projection, GLTEST.camera_rotation[1]);
+    mat4.rotateZ(GLTEST.mat_projection, GLTEST.mat_projection, GLTEST.camera_rotation[2]);
+    mat4.scale(GLTEST.mat_projection, GLTEST.mat_projection, GLTEST.camera_scale);
+
+    GLTEST.ctx.lineWidth = 2;
+    GLTEST.ctx.font = '12px "Arial"';
+    const AXISLEN = 0.5;
+    GLTEST.ctx.strokeStyle = GLTEST.ctx.fillStyle = 'red';
+    project_line([0, 0, 0], [AXISLEN, 0, 0], GLTEST.mat_projection, 'X', GLTEST.ctx);
+    GLTEST.ctx.strokeStyle = GLTEST.ctx.fillStyle = 'green';
+    project_line([0, 0, 0], [0, AXISLEN, 0], GLTEST.mat_projection, 'Y', GLTEST.ctx);
+    GLTEST.ctx.strokeStyle = GLTEST.ctx.fillStyle = 'blue';
+    project_line([0, 0, 0], [0, 0, AXISLEN], GLTEST.mat_projection, 'Z', GLTEST.ctx);
+
+
+    GLTEST.ctx.fillStyle = GLTEST.ctx.strokeStyle = 'yellow';
+    draw_vector_source(directional_light_direction, GLTEST.mat_projection, 5, 'LIGHT', GLTEST.ctx);
+    project_line(directional_light_direction, [
+      directional_light_direction[0] * 0.9,
+      directional_light_direction[1] * 0.9,
+      directional_light_direction[2] * 0.9,
+    ], GLTEST.mat_projection, '', GLTEST.ctx);
+
+    GLTEST.gl.clear(GLTEST.gl.COLOR_BUFFER_BIT | GLTEST.gl.DEPTH_BUFFER_BIT);
+
+    // for (let y = -(player_view_dist_y >> 1); y < +(player_view_dist_y >> 1); ++y)
+    //   for (let x = -player_view_dist_x; x < +player_view_dist_x; ++x)
+    for (let y = -1; y < +2; ++y)
+      for (let x = -2; x < +3; ++x)
+    {
+      const map_value = map_get(x + player_x, y + player_y);
+
+      if (map_value) {
+        const figure_color = DATA__randomcolors[map_value];
+        GLTEST.webgl.bind_array_buffer(GLTEST.a_loc.color, new Float32Array(Array(triangle.indices.length).fill(figure_color).flat()), 4, GLTEST.gl.FLOAT, GLTEST.color_array_buffer);
+
+        mat4.identity(mat_modelview);
+        mat4.translate(mat_modelview, mat_modelview, [
+          (x + y - 1) * triangle.a / 2,
+          0,
+          y * triangle.h - triangle.r * ((player_x & 1) + 1),
+        ]);
+        if (x + player_x & 1) {
+          mat4.translate(mat_modelview, mat_modelview, [triangle.a, 0, triangle.h]);
+          mat4.rotateY(mat_modelview, mat_modelview, Math.PI);
+        }
+
+        GLTEST.gl.uniformMatrix4fv(GLTEST.u_loc.view, false, mat4.multiply([], GLTEST.mat_projection, mat_modelview));
+        GLTEST.gl.uniformMatrix4fv(GLTEST.u_loc.normal, false, mat4.transpose([], mat4.invert([], mat_modelview)));
+        GLTEST.gl.drawElements(GLTEST.gl.TRIANGLES, triangle.indices.length, GLTEST.gl.UNSIGNED_SHORT, 0);
+      }
+    }
+
+    Stack.pop(GLTEST.mat_projection);
+    GLTEST.ctx.restore();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     requestAnimationFrame(render);
   }
 

@@ -3,23 +3,37 @@ if (!vec3) var vec3 = glMatrix.vec3;
 if (!vec4) var vec4 = glMatrix.vec4;
 if (!mat4) var mat4 = glMatrix.mat4;
 
-function WebGL(screen_width, screen_height, parent, class_name) {
+function WebGL(screen_width, screen_height, parent, webgl_class, canvas_class) {
   screen_width  = screen_width  || 300;
   screen_height = screen_height || 300;
   parent        = parent        || document.body;
-  class_name    = class_name    || 'webgl';
+  webgl_class   = webgl_class   || 'webgl';
+  canvas_class  = webgl_class   || 'canvas';
 
   // creating webgl context
 
   const gl = document.createElement('canvas').getContext('webgl', { preserveDrawingBuffer: true });
   gl.canvas.width = screen_width;
   gl.canvas.height = screen_height;
-  gl.canvas.classList.add(class_name);
+  gl.canvas.classList.add(webgl_class);
   parent.appendChild(gl.canvas);
+
+  // creating 2d context (optional)
+
+  const ctx = document.createElement('canvas').getContext('2d');
+  ctx.canvas.width = screen_width;
+  ctx.canvas.height = screen_height;
+  ctx.canvas.classList.add(canvas_class);
+  ctx.canvas.imageSmoothingEnabled = false;
+  parent.appendChild(ctx.canvas);
+
+  // viewport
+
+  const viewport = [0, 0, screen_width, screen_height];
 
   // preparing scene
 
-  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+  gl.viewport(...viewport);
 
   gl.enable(gl.DEPTH_TEST);
   gl.depthFunc(gl.LEQUAL);
@@ -39,11 +53,12 @@ function WebGL(screen_width, screen_height, parent, class_name) {
     {
       throw Error(`compile_shader:: '${type}' is not type of shader`);
     }
+    const type_str = type === gl.VERTEX_SHADER ? 'VERTEX_SHADER' : 'FRAGMENT_SHADER';
     const shader = gl.createShader(type);
     gl.shaderSource(shader, data);
     gl.compileShader(shader);
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-      throw Error(`'compile_shader:: ${type}:: ${gl.getShaderInfoLog(shader)}`);
+      throw Error(`'compile_shader:: ${type_str}:: ${gl.getShaderInfoLog(shader)}`);
     }
     return shader;
   }
@@ -60,12 +75,30 @@ function WebGL(screen_width, screen_height, parent, class_name) {
   }
 
 
-  function define_uniform_locations(shader_program, dict) {
+  function define_uniform_locations(shader_program, dict, prefix = '') {
     for (let key in dict) {
-      if (typeof dict[key] === 'string') {
-        dict[key] = gl.getUniformLocation(shader_program, dict[key]);
-      } else if (typeof dict[key] === 'object') {
-        define_uniform_locations(shader_program, dict[key]);
+      if (dict[key] instanceof Object) {
+        if ('_array_' in dict[key]) {
+          const arrlen = dict[key]['_array_'];
+          delete dict[key]['_array_'];
+          dict[key] = Array(arrlen).fill().map((_, i) => {
+            let name = `${key}[${i}]`;
+            if (prefix.length) name = `${prefix}.${name}`;
+            return define_uniform_locations(shader_program, {...dict[key]}, name);
+          });
+        } else {
+          let name = key;
+          if (prefix.length) name = `${prefix}.${name}`;
+          define_uniform_locations(shader_program, dict[key], name);
+        }
+      } else if (typeof dict[key] === 'string') {
+        let name = dict[key];
+        if (prefix.length) name = `${prefix}.${name}`;
+        dict[key] = gl.getUniformLocation(shader_program, name);
+      } else {
+        let name = key;
+        if (prefix.length) name = `${prefix}.${name}`;
+        dict[key] = gl.getUniformLocation(shader_program, name);
       }
     }
     return dict;
@@ -83,25 +116,8 @@ function WebGL(screen_width, screen_height, parent, class_name) {
   }
 
 
-  function set_ambient_light(u_location, color) {
-    gl.uniform3f(u_location, ...color);
-  }
-
-
-  function set_directional_light(u_location, color, direction) {
-    if (!('color' in u_location)
-    ||  !('direction' in u_location))
-    {
-      throw Error('set_directional_light:: u_location has no attribute color and/or direction');
-    }
-    const normalized = vec3.create();
-    vec3.normalize(normalized, direction);
-    gl.uniform3f(u_location.color, ...color);
-    gl.uniform3f(u_location.direction, ...normalized);
-  }
-
-
   function create_texture(image) {
+    // TODO: использовать Сжатые текстуры (http://www.opengl-tutorial.org/ru/beginners-tutorials/tutorial-5-a-textured-cube/)
     const texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
@@ -131,35 +147,30 @@ function WebGL(screen_width, screen_height, parent, class_name) {
   }
 
 
+  function get_bounding_rect() {
+    return gl.canvas.getBoundingClientRect();
+  }
+
+
   return {
     // context itself
     gl,
+    // 2d layout
+    ctx,
     // object with context and methods
     webgl: {
       gl,
+      viewport,
       compile_shader,
       create_shader_program,
       define_uniform_locations,
       define_attrib_locations,
-      set_ambient_light,
-      set_directional_light,
       create_texture,
       bind_array_buffer,
       bind_element_buffer,
+      get_bounding_rect,
     },
   }
-}
-
-
-// orthogonal projection
-WebGL.ortho = function (m, z_near, z_far) {
-  // source: https://community.khronos.org/t/constructing-an-orthographic-matrix-for-2d-drawing/62270
-  m = mat4.identity(m);
-  m[0] = -1.0;
-  m[5] = +1.0;
-  m[10] = +2.0 / (z_far - z_near);
-  m[14] = (z_far + z_near) / (z_far - z_near);
-  return m;
 }
 
 
@@ -182,8 +193,11 @@ WebGL.project = function (out, v, viewport, m) {
 
   const [x, y, z] = vec3.transformMat4([], v, m);
 
-  out[0] = (x / +(z || 1) + 1) * (view_w >> 1) + view_x;
-  out[1] = (y / -(z || 1) + 1) * (view_h >> 1) + view_y;
+  if (z > 0 && z < 1 && z > 0 && z < 1) {
+    out[0] = (x / +z + 1) * (view_w >> 1) + view_x;
+    out[1] = (y / -z + 1) * (view_h >> 1) + view_y;
+    out[2] = z;
+  }
 
   return out;
 }
@@ -200,7 +214,7 @@ WebGL.unproject = function (out, v, viewport, m) {
   // Normalized Device Coordinates (NDC)
   const nx = 2 * (         v[0] - view_x    ) / view_w - 1;
   const ny = 2 * (view_h - v[1] - view_y - 1) / view_h - 1;
-  const nz = 2 * (         v[2]|0           )          - 1; // v[2]=0 means "near plane"
+  const nz = 2 * (         v[2] || 0        )          - 1; // v[2]=0 means "near plane"
 
   m = mat4.invert([], m);
   const [x, y, z, w] = vec4.transformMat4([], [nx, ny, nz, 1], m);
@@ -210,6 +224,43 @@ WebGL.unproject = function (out, v, viewport, m) {
   out[2] = z / w;
 
   return out;
+}
+
+
+// creates fps camera
+WebGL.create_camera = function (o) {
+  return {
+    position: [0, 0, -10], // position inverted
+    pitch: 0,
+    yaw: 0,
+    roll: 0, // disabled
+    d_forward: 0,
+    d_strafe: 0,
+    d_up: 0,
+    forward: [],
+    strafe: [],
+    up: [],
+    center: [],
+    mat_view: mat4.create(),
+    apply(m) {
+      // source: http://www.opengl-tutorial.org/beginners-tutorials/tutorial-6-keyboard-and-mouse/
+      this.forward[0] = Math.cos(this.pitch) * Math.sin(this.yaw);
+      this.forward[1] = Math.sin(this.pitch);
+      this.forward[2] = Math.cos(this.pitch) * Math.cos(this.yaw);
+      this.strafe[0] = Math.sin(this.yaw - Math.PI / 2);
+      this.strafe[1] = 0;
+      this.strafe[2] = Math.cos(this.yaw - Math.PI / 2);
+      vec3.cross(this.up, this.strafe, this.forward);
+      vec3.scaleAndAdd(this.position, this.position, this.forward, this.d_forward);
+      vec3.scaleAndAdd(this.position, this.position, this.strafe, this.d_strafe);
+      vec3.scaleAndAdd(this.position, this.position, this.up, this.d_up);
+      this.d_forward = this.d_strafe = this.d_up = 0;
+      vec3.add(this.center, this.position, this.forward);
+      mat4.lookAt(this.mat_view, this.position, this.center, this.up);
+      mat4.multiply(m, m, this.mat_view);
+      return m;
+    },
+  };
 }
 
 
@@ -238,6 +289,37 @@ WebGL.create_face_normal = function (x1, y1, z1, x2, y2, z2, x3, y3, z3) {
 }
 
 
+// draws normals
+WebGL.draw_vertex_normals = function (ctx, viewport, matrix, coordinates, normals, indices, indices_start, indices_number) {
+  indices_start = indices_start || 0;
+  indices_number = indices_number || (indices.length - indices_start);
+  ctx.beginPath();
+  for (let i = indices_start; i < indices_start + indices_number; ++i) {
+    const ii = indices[i];
+    const p1 = [
+      coordinates[ii * 3 + 0],
+      coordinates[ii * 3 + 1],
+      coordinates[ii * 3 + 2],
+    ];
+    const p2 = [
+      normals[ii * 3 + 0] + p1[0],
+      normals[ii * 3 + 1] + p1[1],
+      normals[ii * 3 + 2] + p1[2],
+    ];
+    const v1 = [];
+    const v2 = [];
+    WebGL.project(v1, p1, viewport, matrix);
+    WebGL.project(v2, p2, viewport, matrix);
+    if (v1 && v2) {
+      ctx.moveTo(v1[0], v1[1]);
+      ctx.lineTo(v2[0], v2[1]);
+      ctx.fillText(ii, v2[0], v2[1]);
+    }
+  }
+  ctx.stroke();
+}
+
+
 // defines cube
 WebGL.create_cube = function () {
   /*
@@ -251,30 +333,30 @@ WebGL.create_cube = function () {
   return {
     // coordinates
     coordinates: [
-      0, 0, 0,   0, 1, 0,   1, 1, 0,   1, 0, 0, // front
-      0, 0, 1,   0, 1, 1,   1, 1, 1,   1, 0, 1, // back
-      0, 0, 0,   0, 0, 1,   1, 0, 1,   1, 0, 0, // bottom
-      0, 1, 0,   0, 1, 1,   1, 1, 1,   1, 1, 0, // top
-      0, 0, 0,   0, 1, 0,   0, 1, 1,   0, 0, 1, // left
-      1, 0, 0,   1, 1, 0,   1, 1, 1,   1, 0, 1, // right
+      0, 0, 0,   0, 1, 0,   1, 1, 0,   1, 0, 0, // front (red)
+      0, 0, 1,   0, 1, 1,   1, 1, 1,   1, 0, 1, // back (green)
+      0, 0, 0,   0, 0, 1,   1, 0, 1,   1, 0, 0, // botton (magenta)
+      0, 1, 0,   0, 1, 1,   1, 1, 1,   1, 1, 0, // top (cyan)
+      0, 0, 0,   0, 1, 0,   0, 1, 1,   0, 0, 1, // left (blue)
+      1, 0, 0,   1, 1, 0,   1, 1, 1,   1, 0, 1, // right (yellow)
     ],
     // normals
     normals: [
-      0,  0, -1,    0,  0, -1,    0,  0, -1,    0,  0, -1, // front
-      0,  0, +1,    0,  0, +1,    0,  0, +1,    0,  0, +1, // back
-      0, -1,  0,    0, -1,  0,    0, -1,  0,    0, -1,  0, // bottom
-      0, +1,  0,    0, +1,  0,    0, +1,  0,    0, +1,  0, // top
-     -1,  0,  0,   -1,  0,  0,   -1,  0,  0,   -1,  0,  0, // left
-     +1,  0,  0,   +1,  0,  0,   +1,  0,  0,   +1,  0,  0, // right
+      0,  0, -1,    0,  0, -1,    0,  0, -1,    0,  0, -1, // front (red)
+      0,  0, +1,    0,  0, +1,    0,  0, +1,    0,  0, +1, // back (green)
+      0, -1,  0,    0, -1,  0,    0, -1,  0,    0, -1,  0, // botton (magenta)
+      0, +1,  0,    0, +1,  0,    0, +1,  0,    0, +1,  0, // top (cyan)
+     -1,  0,  0,   -1,  0,  0,   -1,  0,  0,   -1,  0,  0, // left (blue)
+     +1,  0,  0,   +1,  0,  0,   +1,  0,  0,   +1,  0,  0, // right (yellow)
     ],
     // indices
     indices: [
-       0,  1,  2,  2,  3,  0, // front
-       4,  5,  6,  6,  7,  4, // back
-       8,  9, 10, 10, 11,  8, // bottom
-      12, 13, 14, 14, 15, 12, // top
-      16, 17, 18, 18, 19, 16, // left
-      20, 21, 22, 22, 23, 20, // right
+       0,  1,  2,  2,  3,  0, // front (red)
+       4,  5,  6,  6,  7,  4, // back (green)
+       8,  9, 10, 10, 11,  8, // botton (magenta)
+      12, 13, 14, 14, 15, 12, // top (cyan)
+      16, 17, 18, 18, 19, 16, // left (blue)
+      20, 21, 22, 22, 23, 20, // right (yellow)
     ],
     // vertices colors
     colors: [
@@ -287,19 +369,155 @@ WebGL.create_cube = function () {
     ],
     // texture coordinates
     texcoords: [
-      0, 0,   0, 1,   1, 1,   1, 0, // front
-      0, 0,   0, 1,   1, 1,   1, 0, // back
-      0, 0,   0, 1,   1, 1,   1, 0, // bottom
-      0, 0,   0, 1,   1, 1,   1, 0, // top
-      0, 0,   0, 1,   1, 1,   1, 0, // left
-      0, 0,   0, 1,   1, 1,   1, 0, // right
+      1, 1,   1, 0,   0, 0,   0, 1, // front (red)
+      0, 1,   0, 0,   1, 0,   1, 1, // back (green)
+      1, 0,   1, 1,   0, 1,   0, 0, // botton (magenta)
+      1, 1,   1, 0,   0, 0,   0, 1, // top (cyan)
+      0, 1,   0, 0,   1, 0,   1, 1, // left (blue)
+      1, 1,   1, 0,   0, 0,   0, 1, // right (yellow)
     ],
   };
 }
 
 
+// // defines cube
+// WebGL.create_cube = function () {
+//   const positions = [
+//     // Front face
+//     -1.0, -1.0,  1.0,
+//      1.0, -1.0,  1.0,
+//      1.0,  1.0,  1.0,
+//     -1.0,  1.0,  1.0,
+
+//     // Back face
+//     -1.0, -1.0, -1.0,
+//     -1.0,  1.0, -1.0,
+//      1.0,  1.0, -1.0,
+//      1.0, -1.0, -1.0,
+
+//     // Top face
+//     -1.0,  1.0, -1.0,
+//     -1.0,  1.0,  1.0,
+//      1.0,  1.0,  1.0,
+//      1.0,  1.0, -1.0,
+
+//     // Bottom face
+//     -1.0, -1.0, -1.0,
+//      1.0, -1.0, -1.0,
+//      1.0, -1.0,  1.0,
+//     -1.0, -1.0,  1.0,
+
+//     // Right face
+//      1.0, -1.0, -1.0,
+//      1.0,  1.0, -1.0,
+//      1.0,  1.0,  1.0,
+//      1.0, -1.0,  1.0,
+
+//     // Left face
+//     -1.0, -1.0, -1.0,
+//     -1.0, -1.0,  1.0,
+//     -1.0,  1.0,  1.0,
+//     -1.0,  1.0, -1.0,
+//   ];const vertexNormals = [
+//     // Front
+//      0.0,  0.0,  1.0,
+//      0.0,  0.0,  1.0,
+//      0.0,  0.0,  1.0,
+//      0.0,  0.0,  1.0,
+
+//     // Back
+//      0.0,  0.0, -1.0,
+//      0.0,  0.0, -1.0,
+//      0.0,  0.0, -1.0,
+//      0.0,  0.0, -1.0,
+
+//     // Top
+//      0.0,  1.0,  0.0,
+//      0.0,  1.0,  0.0,
+//      0.0,  1.0,  0.0,
+//      0.0,  1.0,  0.0,
+
+//     // Bottom
+//      0.0, -1.0,  0.0,
+//      0.0, -1.0,  0.0,
+//      0.0, -1.0,  0.0,
+//      0.0, -1.0,  0.0,
+
+//     // Right
+//      1.0,  0.0,  0.0,
+//      1.0,  0.0,  0.0,
+//      1.0,  0.0,  0.0,
+//      1.0,  0.0,  0.0,
+
+//     // Left
+//     -1.0,  0.0,  0.0,
+//     -1.0,  0.0,  0.0,
+//     -1.0,  0.0,  0.0,
+//     -1.0,  0.0,  0.0
+//   ];const textureCoordinates = [
+//     // Front
+//     0.0,  0.0,
+//     1.0,  0.0,
+//     1.0,  1.0,
+//     0.0,  1.0,
+//     // Back
+//     0.0,  0.0,
+//     1.0,  0.0,
+//     1.0,  1.0,
+//     0.0,  1.0,
+//     // Top
+//     0.0,  0.0,
+//     1.0,  0.0,
+//     1.0,  1.0,
+//     0.0,  1.0,
+//     // Bottom
+//     0.0,  0.0,
+//     1.0,  0.0,
+//     1.0,  1.0,
+//     0.0,  1.0,
+//     // Right
+//     0.0,  0.0,
+//     1.0,  0.0,
+//     1.0,  1.0,
+//     0.0,  1.0,
+//     // Left
+//     0.0,  0.0,
+//     1.0,  0.0,
+//     1.0,  1.0,
+//     0.0,  1.0,
+//   ];const indices = [
+//     0,  1,  2,      0,  2,  3,    // front
+//     4,  5,  6,      4,  6,  7,    // back
+//     8,  9,  10,     8,  10, 11,   // top
+//     12, 13, 14,     12, 14, 15,   // bottom
+//     16, 17, 18,     16, 18, 19,   // right
+//     20, 21, 22,     20, 22, 23,   // left
+//   ];
+
+//   return {
+//     // coordinates
+//     coordinates: positions,
+//     // normals
+//     normals: vertexNormals,
+//     // indices
+//     indices: indices,
+//     // vertices colors
+//     colors: [
+//       1.0, 0.0, 0.0, 1.0,  1.0, 0.0, 0.0, 1.0,  1.0, 0.0, 0.0, 1.0,  1.0, 0.0, 0.0, 1.0, // front (red)
+//       0.0, 1.0, 0.0, 1.0,  0.0, 1.0, 0.0, 1.0,  0.0, 1.0, 0.0, 1.0,  0.0, 1.0, 0.0, 1.0, // back (green)
+//       1.0, 0.0, 1.0, 1.0,  1.0, 0.0, 1.0, 1.0,  1.0, 0.0, 1.0, 1.0,  1.0, 0.0, 1.0, 1.0, // botton (magenta)
+//       0.0, 1.0, 1.0, 1.0,  0.0, 1.0, 1.0, 1.0,  0.0, 1.0, 1.0, 1.0,  0.0, 1.0, 1.0, 1.0, // top (cyan)
+//       0.0, 0.0, 1.0, 1.0,  0.0, 0.0, 1.0, 1.0,  0.0, 0.0, 1.0, 1.0,  0.0, 0.0, 1.0, 1.0, // left (blue)
+//       1.0, 1.0, 0.0, 1.0,  1.0, 1.0, 0.0, 1.0,  1.0, 1.0, 0.0, 1.0,  1.0, 1.0, 0.0, 1.0, // right (yellow)
+//     ],
+//     // texture coordinates
+//     texcoords: textureCoordinates,
+//   };
+// }
+
+
 // starts demo
-WebGL.render_demo = function (parent) {
+WebGL.demo = function (parent) {
   parent = parent || document.body;
 
   const screen_width = 400;

@@ -8,13 +8,8 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 0;
 }
 
 canvas {
   position: absolute;
-}
-
-.graphics {
-  width: 510px;
 }

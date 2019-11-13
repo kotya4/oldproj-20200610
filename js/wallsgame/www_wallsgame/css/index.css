@@ -10,6 +10,10 @@ body {
   align-items: center;
 }
 
+div {
+  float: right;
+}
+
 canvas {
   image-rendering: pixelated;
   //width: 300px;

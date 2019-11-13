@@ -6,16 +6,9 @@ async function Fixedsys8x12(buffer_width, buffer_height) {
     const img = new Image();
     img.src = src;
     await new Promise(r => img.onload = r);
-    // creates buffer context with fixedsys image
-    const ctx = document.createElement('canvas').getContext('2d');
-    ctx.imageSmoothingEnabled = false;
-    ctx.canvas.height = img.height;
-    ctx.canvas.width = img.width;
-    ctx.drawImage(img, 0, 0);
     // returns font instance
     return {
       img,
-      ctx,
       char_width: 8,
       char_height: 12,
       draw_char(ctx, char_index, screen_x, screen_y) {
@@ -41,13 +34,18 @@ async function Fixedsys8x12(buffer_width, buffer_height) {
       width,
       height,
       buffer,
+      debuginfo: {
+        last_errpixel: {},
+        lines_before_clear: 0,
+      },
       clear() {
+        this.debuginfo.lines_before_clear = 0;
         for (let o of this.buffer)
           o.char_index = 0;
       },
       get(x, y) {
-        // returns pixel-object at position (x, y) nor first pixel (0, 0).
-        return this.buffer[x + y * this.width] || this.buffer[0];
+        if (x >= width || y >= height || x < 0 || y < 0) return this.debuginfo.last_errpixel;
+        return this.buffer[x + y * this.width] || this.debuginfo.last_errpixel;
       },
       flush(ctx, screen_x = 0, screen_y = 0) {
         for (let i = 0; i < this.buffer.length; ++i) {
@@ -62,45 +60,61 @@ async function Fixedsys8x12(buffer_width, buffer_height) {
 
   // prepares symbolic line drawer
   function prepare_liner(screen) {
-    //
-    const h_chars = ['`', '\'"', '-', ',.', '_'];
-    const v_chars = ['/', '|!;:', '\\'];
+    // makes wise choise
+    const choose_char_code = s => s.charCodeAt(Math.random() * s.length | 0);
     // liner instance
     return {
       screen,
-      stroke(x1, y1, x2, y2) {
+      stroke(x1, y1, x2, y2, overlap = false) {
         // source: https://en.wikipedia.org/wiki/Digital_differential_analyzer_(graphics_algorithm)
+
+        this.screen.debuginfo.lines_before_clear++;
+
         x1 /= this.screen.font.char_width, y1 /= this.screen.font.char_height;
         x2 /= this.screen.font.char_width, y2 /= this.screen.font.char_height;
+        x1 = (x1 | 0) + 0.5;
+        y1 = (y1 | 0) + 0.5;
+        x2 = (x2 | 0) + 0.5;
+        y2 = (y2 | 0) + 0.5;
+
         let dx = x2 - x1;
         let dy = y2 - y1;
-        const is_horisontal = Math.abs(dx) > Math.abs(dy);
-        const step = is_horisontal ? Math.abs(dx) : Math.abs(dy);
+        const step = Math.abs(dx) > Math.abs(dy) ? Math.abs(dx) : Math.abs(dy);
         dx /= step;
         dy /= step;
+        const abdx = Math.abs(dx);
+        const abdy = Math.abs(dy);
+
+        const SLASH = '\\/'[dy * dx < 0 | 0];
+
         for (let i = 0; i < step; ++i) {
-          const x = x1 | 0;
-          const y = y1 | 0;
+          const x = ~~x1;
+          const y = ~~y1;
           const px = x1 - x;
           const py = y1 - y;
-          if (is_horisontal) {
-            const cc = h_chars[py * h_chars.length | 0];
-            const ci = cc.charCodeAt(Math.random() * cc.length | 0);
-            this.screen.get(x, y).char_index = ci;
-          } else {
-            // TODO: rules for vertical lines must be more complex
-            if (dx * dy > 0 ^ px > 0.5) {
-              const cc = h_chars[px * h_chars.length | 0];
-              const ci = cc.charCodeAt(Math.random() * cc.length | 0);
-              this.screen.get(x, y).char_index = ci;
-            } else {
-              const cc = v_chars[px * v_chars.length | 0];
-              const ci = cc.charCodeAt(Math.random() * cc.length | 0);
-              this.screen.get(x, y).char_index = ci;
-            }
-          }
           x1 += dx;
           y1 += dy;
+
+          const pixel = this.screen.get(x, y);
+
+          if (!overlap && pixel.char_index !== 0)
+            pixel.char_index = choose_char_code('x');
+
+          else if (abdx !== 1)
+            pixel.char_index = choose_char_code(px < abdx ? (Math.random() < (abdx - 0.5) ? SLASH : ';:') : '|');
+
+          else if (abdy <= 0.35)
+            pixel.char_index = ['`', `'"`, '-', '.,', '_'].map(choose_char_code)[py * 5 | 0];
+
+          else if (abdy <= 0.66)
+            pixel.char_index = [`\`'"`, SLASH, '.,'].map(choose_char_code)[py * 3 | 0];
+
+          else {
+            if      (py < 0.10) pixel.char_index = choose_char_code('`');
+            else if (py < 0.33) pixel.char_index = choose_char_code(`'"`);
+            else if (py < 0.80) pixel.char_index = choose_char_code(SLASH);
+            else                pixel.char_index = choose_char_code('.,');
+          }
         }
       },
     };
@@ -116,6 +130,95 @@ async function Fixedsys8x12(buffer_width, buffer_height) {
 
 
   return { font, screen, liner };
+}
+
+
+Fixedsys8x12.demo = async function () {
+  const display_height = 300;
+  const display_width = 300;
+
+  const ctx = document.createElement('canvas').getContext('2d');
+  document.body.appendChild(ctx.canvas);
+  ctx.canvas.height = display_height;
+  ctx.canvas.width = display_width;
+  ctx.imageSmoothingEnabled = false;
+
+  const fixedsys = await Fixedsys8x12(40, 40);
+
+  const milliseconds = () => Date.now();
+  const seconds = () => (Date.now() / 1000 | 0) % 60;
+  const minutes = () => (Date.now() / 1000 | 0) / 60 % 60;
+  const hours   = () => (Date.now() / 1000 | 0) / 60 / 60 + 3; // UTC + 3
+
+  const millisecondArrowRadius = 120;
+  const secondArrowRadius = 100;
+  const minuteArrowRadius = 75;
+  const hourArrowRadius = 50;
+  const clockfaceRadius = 120;
+  const bgRadius = 145;
+  const origin = [150, 150];
+
+  setInterval(() => {
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+    fixedsys.screen.clear();
+
+    const millisecondsArrowAngle = -Math.PI / 2 + milliseconds() * Math.PI * 2 / 1000;
+    const secondArrowAngle = -Math.PI / 2 + seconds() * Math.PI * 2 / 60;
+    const minuteArrowAngle = -Math.PI / 2 + minutes() * Math.PI * 2 / 60;
+    const hourArrowAngle   = -Math.PI / 2 + hours()   * Math.PI * 2 / 12;
+
+    fixedsys.liner.stroke(
+      ...origin,
+      origin[0] + Math.cos(millisecondsArrowAngle) * millisecondArrowRadius,
+      origin[1] + Math.sin(millisecondsArrowAngle) * millisecondArrowRadius, false);
+
+    fixedsys.liner.stroke(
+      ...origin,
+      origin[0] + Math.cos(secondArrowAngle) * secondArrowRadius,
+      origin[1] + Math.sin(secondArrowAngle) * secondArrowRadius, false);
+
+    fixedsys.liner.stroke(
+      ...origin,
+      origin[0] + Math.cos(minuteArrowAngle) * minuteArrowRadius,
+      origin[1] + Math.sin(minuteArrowAngle) * minuteArrowRadius, false);
+
+    fixedsys.liner.stroke(
+      ...origin,
+      origin[0] + Math.cos(hourArrowAngle) * hourArrowRadius,
+      origin[1] + Math.sin(hourArrowAngle) * hourArrowRadius, false);
+
+    for (let t = 0; t < 12; ++t) {
+      const angle = -Math.PI / 2 + t * Math.PI * 2 / 12;
+      const x = (origin[0] + Math.cos(angle) * clockfaceRadius) / fixedsys.font.char_width  | 0;
+      const y = (origin[1] + Math.sin(angle) * clockfaceRadius) / fixedsys.font.char_height | 0;
+      if (t < 10 && t > 0) {
+        fixedsys.screen.get(x, y).char_index = t + 48;
+      } else {
+        fixedsys.screen.get(x - 1, y).char_index = 49;
+        fixedsys.screen.get(x, y).char_index = t === 0 ? 50 : t % 10 + 48;
+      }
+    }
+
+    for (let y = 0; y < fixedsys.screen.height; ++y)
+      for (let x = 0; x < fixedsys.screen.width; ++x)
+    {
+      const rx = (x / 0.95) * fixedsys.font.char_width  - origin[0];
+      const ry = (y / 0.95) * fixedsys.font.char_height - origin[1];
+      if (rx ** 2 + ry ** 2 > bgRadius ** 2) {
+        fixedsys.screen.get(x, y).char_index = Math.random() * 256 | 0;
+      }
+    }
+
+    fixedsys.screen.flush(ctx);
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'difference';
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    ctx.restore();
+  }, 0);
 }
 
 
