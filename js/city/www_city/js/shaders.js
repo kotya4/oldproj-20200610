@@ -88,12 +88,6 @@ const DATA__fragment_shader =
     // specular shading
     vec3 reflect_direction = reflect(-light_direction, normal);
     float spec = pow(max(dot(camera_direction, reflect_direction), 0.0), 4.0); // material.shininess
-    // spec = clamp(spec, 0.0, 1.0);
-
-    if (dot(normal, light_direction) < 0.0) {
-      spec = 0.0;
-    }
-
     // attenuation
     float distance    = length(light.position - fragment_position);
     float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));

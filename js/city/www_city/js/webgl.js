@@ -12,7 +12,7 @@ function WebGL(screen_width, screen_height, parent, webgl_class, canvas_class) {
 
   // creating webgl context
 
-  const gl = document.createElement('canvas').getContext('webgl', { preserveDrawingBuffer: true });
+  const gl = document.createElement('canvas').getContext('webgl2', { preserveDrawingBuffer: true });
   gl.canvas.width = screen_width;
   gl.canvas.height = screen_height;
   gl.canvas.classList.add(webgl_class);
@@ -46,6 +46,13 @@ function WebGL(screen_width, screen_height, parent, webgl_class, canvas_class) {
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
+  // blank texture
+
+  const empty_texture = create_texture();
+
+
+  ///////////////////////////////////////////////////////////////////////
+
 
   function compile_shader(type, data) {
     if (type !== gl.VERTEX_SHADER
@@ -76,9 +83,14 @@ function WebGL(screen_width, screen_height, parent, webgl_class, canvas_class) {
 
 
   function define_uniform_locations(shader_program, dict, prefix = '') {
+    // All locations will be stored in 'dict' (values will be rewrited), returns 'dict'.
     for (let key in dict) {
+      // Value can be Object, String or neither.
       if (dict[key] instanceof Object) {
         if ('_array_' in dict[key]) {
+          // If value is Object and has pseudokey '_array_',
+          // then all keys in this object maps into array with
+          // length === '_array_'.
           const arrlen = dict[key]['_array_'];
           delete dict[key]['_array_'];
           dict[key] = Array(arrlen).fill().map((_, i) => {
@@ -87,15 +99,18 @@ function WebGL(screen_width, screen_height, parent, webgl_class, canvas_class) {
             return define_uniform_locations(shader_program, {...dict[key]}, name);
           });
         } else {
+          // If value is Object, then value recoursively parses into key.
           let name = key;
           if (prefix.length) name = `${prefix}.${name}`;
           define_uniform_locations(shader_program, dict[key], name);
         }
       } else if (typeof dict[key] === 'string') {
+        // If value is String, then getting location with name stored in value.
         let name = dict[key];
         if (prefix.length) name = `${prefix}.${name}`;
         dict[key] = gl.getUniformLocation(shader_program, name);
       } else {
+        // Else, gentting location with name stored in key.
         let name = key;
         if (prefix.length) name = `${prefix}.${name}`;
         dict[key] = gl.getUniformLocation(shader_program, name);
@@ -106,27 +121,44 @@ function WebGL(screen_width, screen_height, parent, webgl_class, canvas_class) {
 
 
   function define_attrib_locations(shader_program, dict) {
+    // TODO: make something like define_uniform_locations
     for (let key in dict) {
-      if (typeof dict[key] === 'string') {
-        dict[key] = gl.getAttribLocation(shader_program, dict[key]);
-        gl.enableVertexAttribArray(dict[key]);
+      const name = typeof dict[key] === 'string' ? dict[key] : key;
+      dict[key] = gl.getAttribLocation(shader_program, name);
+      gl.enableVertexAttribArray(dict[key]);
+      const errcode = gl.getError();
+      if (errcode !== 0) {
+        console.log(`define_attrib_locations:: while linking '${name}' attribute error (${errcode}) occured`);
       }
     }
     return dict;
   }
 
 
-  function create_texture(image) {
-    // TODO: использовать Сжатые текстуры (http://www.opengl-tutorial.org/ru/beginners-tutorials/tutorial-5-a-textured-cube/)
+  function create_texture(image = null) {
+    const width  = image ? image.width  : 1;
+    const height = image ? image.height : 1;
+    const pixels = image || new Uint8Array([255, 255, 255, 255]);
+    ///////////////////////////////////
     const texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+    gl.texImage2D(
+      gl.TEXTURE_2D,    // target
+      0,                // level
+      gl.RGBA,          // internalformat
+      width,            // width
+      height,           // height
+      0,                // border
+      gl.RGBA,          // format
+      gl.UNSIGNED_BYTE, // type
+      pixels,           // pixels
+    );
+    // https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/glTexParameter.xml
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
     gl.generateMipmap(gl.TEXTURE_2D);
     gl.bindTexture(gl.TEXTURE_2D, null);
     return texture;
-    // https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/glTexParameter.xml
   }
 
 
@@ -148,8 +180,12 @@ function WebGL(screen_width, screen_height, parent, webgl_class, canvas_class) {
 
 
   function get_bounding_rect() {
+    // bounding rect changes in runtime
     return gl.canvas.getBoundingClientRect();
   }
+
+
+  //////////////////////////////////////////////////////////////////
 
 
   return {
@@ -161,6 +197,8 @@ function WebGL(screen_width, screen_height, parent, webgl_class, canvas_class) {
     webgl: {
       gl,
       viewport,
+      empty_texture,
+      //////////////////////////
       compile_shader,
       create_shader_program,
       define_uniform_locations,
@@ -172,6 +210,13 @@ function WebGL(screen_width, screen_height, parent, webgl_class, canvas_class) {
     },
   }
 }
+
+
+//////////////////////////////////////////////////////
+//                                                  //
+//  GL UTILS (TODO: MUST BE DECLARED IN OTHER FILE) //
+//                                                  //
+//////////////////////////////////////////////////////
 
 
 // creates matrices stack
@@ -380,140 +425,14 @@ WebGL.create_cube = function () {
 }
 
 
-// // defines cube
-// WebGL.create_cube = function () {
-//   const positions = [
-//     // Front face
-//     -1.0, -1.0,  1.0,
-//      1.0, -1.0,  1.0,
-//      1.0,  1.0,  1.0,
-//     -1.0,  1.0,  1.0,
-
-//     // Back face
-//     -1.0, -1.0, -1.0,
-//     -1.0,  1.0, -1.0,
-//      1.0,  1.0, -1.0,
-//      1.0, -1.0, -1.0,
-
-//     // Top face
-//     -1.0,  1.0, -1.0,
-//     -1.0,  1.0,  1.0,
-//      1.0,  1.0,  1.0,
-//      1.0,  1.0, -1.0,
-
-//     // Bottom face
-//     -1.0, -1.0, -1.0,
-//      1.0, -1.0, -1.0,
-//      1.0, -1.0,  1.0,
-//     -1.0, -1.0,  1.0,
-
-//     // Right face
-//      1.0, -1.0, -1.0,
-//      1.0,  1.0, -1.0,
-//      1.0,  1.0,  1.0,
-//      1.0, -1.0,  1.0,
-
-//     // Left face
-//     -1.0, -1.0, -1.0,
-//     -1.0, -1.0,  1.0,
-//     -1.0,  1.0,  1.0,
-//     -1.0,  1.0, -1.0,
-//   ];const vertexNormals = [
-//     // Front
-//      0.0,  0.0,  1.0,
-//      0.0,  0.0,  1.0,
-//      0.0,  0.0,  1.0,
-//      0.0,  0.0,  1.0,
-
-//     // Back
-//      0.0,  0.0, -1.0,
-//      0.0,  0.0, -1.0,
-//      0.0,  0.0, -1.0,
-//      0.0,  0.0, -1.0,
-
-//     // Top
-//      0.0,  1.0,  0.0,
-//      0.0,  1.0,  0.0,
-//      0.0,  1.0,  0.0,
-//      0.0,  1.0,  0.0,
-
-//     // Bottom
-//      0.0, -1.0,  0.0,
-//      0.0, -1.0,  0.0,
-//      0.0, -1.0,  0.0,
-//      0.0, -1.0,  0.0,
-
-//     // Right
-//      1.0,  0.0,  0.0,
-//      1.0,  0.0,  0.0,
-//      1.0,  0.0,  0.0,
-//      1.0,  0.0,  0.0,
-
-//     // Left
-//     -1.0,  0.0,  0.0,
-//     -1.0,  0.0,  0.0,
-//     -1.0,  0.0,  0.0,
-//     -1.0,  0.0,  0.0
-//   ];const textureCoordinates = [
-//     // Front
-//     0.0,  0.0,
-//     1.0,  0.0,
-//     1.0,  1.0,
-//     0.0,  1.0,
-//     // Back
-//     0.0,  0.0,
-//     1.0,  0.0,
-//     1.0,  1.0,
-//     0.0,  1.0,
-//     // Top
-//     0.0,  0.0,
-//     1.0,  0.0,
-//     1.0,  1.0,
-//     0.0,  1.0,
-//     // Bottom
-//     0.0,  0.0,
-//     1.0,  0.0,
-//     1.0,  1.0,
-//     0.0,  1.0,
-//     // Right
-//     0.0,  0.0,
-//     1.0,  0.0,
-//     1.0,  1.0,
-//     0.0,  1.0,
-//     // Left
-//     0.0,  0.0,
-//     1.0,  0.0,
-//     1.0,  1.0,
-//     0.0,  1.0,
-//   ];const indices = [
-//     0,  1,  2,      0,  2,  3,    // front
-//     4,  5,  6,      4,  6,  7,    // back
-//     8,  9,  10,     8,  10, 11,   // top
-//     12, 13, 14,     12, 14, 15,   // bottom
-//     16, 17, 18,     16, 18, 19,   // right
-//     20, 21, 22,     20, 22, 23,   // left
-//   ];
-
-//   return {
-//     // coordinates
-//     coordinates: positions,
-//     // normals
-//     normals: vertexNormals,
-//     // indices
-//     indices: indices,
-//     // vertices colors
-//     colors: [
-//       1.0, 0.0, 0.0, 1.0,  1.0, 0.0, 0.0, 1.0,  1.0, 0.0, 0.0, 1.0,  1.0, 0.0, 0.0, 1.0, // front (red)
-//       0.0, 1.0, 0.0, 1.0,  0.0, 1.0, 0.0, 1.0,  0.0, 1.0, 0.0, 1.0,  0.0, 1.0, 0.0, 1.0, // back (green)
-//       1.0, 0.0, 1.0, 1.0,  1.0, 0.0, 1.0, 1.0,  1.0, 0.0, 1.0, 1.0,  1.0, 0.0, 1.0, 1.0, // botton (magenta)
-//       0.0, 1.0, 1.0, 1.0,  0.0, 1.0, 1.0, 1.0,  0.0, 1.0, 1.0, 1.0,  0.0, 1.0, 1.0, 1.0, // top (cyan)
-//       0.0, 0.0, 1.0, 1.0,  0.0, 0.0, 1.0, 1.0,  0.0, 0.0, 1.0, 1.0,  0.0, 0.0, 1.0, 1.0, // left (blue)
-//       1.0, 1.0, 0.0, 1.0,  1.0, 1.0, 0.0, 1.0,  1.0, 1.0, 0.0, 1.0,  1.0, 1.0, 0.0, 1.0, // right (yellow)
-//     ],
-//     // texture coordinates
-//     texcoords: textureCoordinates,
-//   };
-// }
+// creates safe accessor
+WebGL.create_accessor = function (o) {
+  function accessor(key) {
+    if (key in o) return o[key];
+    throw Error(`accessor:: key '${key}' does not exist`);
+  }
+  return accessor;
+}
 
 
 // starts demo
