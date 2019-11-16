@@ -1,6 +1,7 @@
 //
 if (!vec3) var vec3 = glMatrix.vec3;
 if (!vec4) var vec4 = glMatrix.vec4;
+if (!mat3) var mat3 = glMatrix.mat3;
 if (!mat4) var mat4 = glMatrix.mat4;
 
 function WebGL(screen_width, screen_height, parent, webgl_class, canvas_class) {
@@ -46,10 +47,15 @@ function WebGL(screen_width, screen_height, parent, webgl_class, canvas_class) {
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-  // blank texture
+  // blank textures
 
-  const empty_texture = create_texture();
+  const EMPTY_TEXTURE = create_texture();
+  const EMPTY_NORMALMAP = create_texture(new Uint8Array([128, 128, 255, 255]));
 
+  // version (debug)
+
+  console.log(`%c ${gl.getParameter(gl.VERSION)}`, 'color: blue;');
+  console.log(`%c ${gl.getParameter(gl.SHADING_LANGUAGE_VERSION)}`, 'color: blue;');
 
   ///////////////////////////////////////////////////////////////////////
 
@@ -125,20 +131,39 @@ function WebGL(screen_width, screen_height, parent, webgl_class, canvas_class) {
     for (let key in dict) {
       const name = typeof dict[key] === 'string' ? dict[key] : key;
       dict[key] = gl.getAttribLocation(shader_program, name);
-      gl.enableVertexAttribArray(dict[key]);
-      const errcode = gl.getError();
-      if (errcode !== 0) {
-        console.log(`define_attrib_locations:: while linking '${name}' attribute error (${errcode}) occured`);
+      if (dict[key] < 0) {
+        console.log(`define_attrib_locations:: attribute '${name}' unused`);
       }
     }
     return dict;
   }
 
 
-  function create_texture(image = null) {
-    const width  = image ? image.width  : 1;
-    const height = image ? image.height : 1;
-    const pixels = image || new Uint8Array([255, 255, 255, 255]);
+  function create_texture(image, width, height) {
+    width  = width  || 1;
+    height = height || 1;
+    let pixels;
+
+    if (image == null) {
+      width  = 1;
+      height = 1;
+      pixels = new Uint8Array([255, 255, 255, 255]);
+    }
+
+    else if (image instanceof Image) {
+      width  = image.width;
+      height = image.height;
+      pixels = image;
+    }
+
+    else if (image instanceof Uint8Array) {
+      pixels = image;
+    }
+
+    else {
+      throw Error(`create_texture:: 'image' has unsupported type`);
+    }
+
     ///////////////////////////////////
     const texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -154,28 +179,37 @@ function WebGL(screen_width, screen_height, parent, webgl_class, canvas_class) {
       pixels,           // pixels
     );
     // https://www.khronos.org/registry/OpenGL-Refpages/gl2.1/xhtml/glTexParameter.xml
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.generateMipmap(gl.TEXTURE_2D);
     gl.bindTexture(gl.TEXTURE_2D, null);
     return texture;
   }
 
 
-  function bind_array_buffer(a_location, typed_array, size, type, buffer = null) {
+  function bind_array_buffer(index, srcData, size, type, buffer = null) {
+    if (index < 0) return null; // provided attribute unused
     buffer = buffer || gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-    gl.bufferData(gl.ARRAY_BUFFER, typed_array, gl.STATIC_DRAW);
-    gl.vertexAttribPointer(a_location, size, type, false, 0, 0);
+    gl.bufferData(gl.ARRAY_BUFFER, srcData, gl.STATIC_DRAW);
+    gl.vertexAttribPointer(index, size, type, false, 0, 0);
+    gl.enableVertexAttribArray(index); // always after binding vao
     return buffer;
   }
 
 
-  function bind_element_buffer(typed_array, buffer = null) {
+  function bind_element_buffer(srcData, buffer = null) {
     buffer = buffer || gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, typed_array, gl.STATIC_DRAW);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, srcData, gl.STATIC_DRAW);
     return buffer;
+  }
+
+
+  function bind_vao(vao = null) {
+    vao = vao || gl.createVertexArray();
+    gl.bindVertexArray(vao);
+    return vao;
   }
 
 
@@ -197,7 +231,8 @@ function WebGL(screen_width, screen_height, parent, webgl_class, canvas_class) {
     webgl: {
       gl,
       viewport,
-      empty_texture,
+      EMPTY_TEXTURE,
+      EMPTY_NORMALMAP,
       //////////////////////////
       compile_shader,
       create_shader_program,
@@ -206,6 +241,7 @@ function WebGL(screen_width, screen_height, parent, webgl_class, canvas_class) {
       create_texture,
       bind_array_buffer,
       bind_element_buffer,
+      bind_vao,
       get_bounding_rect,
     },
   }
@@ -329,16 +365,78 @@ WebGL.create_face_normal = function (x1, y1, z1, x2, y2, z2, x3, y3, z3) {
   const Nx = Uy * Vz - Uz * Vy;
   const Ny = Uz * Vx - Ux * Vz;
   const Nz = Ux * Vy - Uy * Vx;
+  // normalize
   const Nmag = Math.sqrt(Nx * Nx + Ny * Ny + Nz * Nz);
   return [Nx / Nmag, Ny / Nmag, Nz / Nmag];
 }
 
 
-// draws normals
-WebGL.draw_vertex_normals = function (ctx, viewport, matrix, coordinates, normals, indices, indices_start, indices_number) {
+// btn
+WebGL.create_tangents = function (tangents, bitangents, { coordinates, texcoords, indices }) {
+  // source: https://habr.com/ru/post/415579/
+  // related: https://community.khronos.org/t/how-to-calculate-tbn-matrix/64002
+
+  tangents = tangents || [];
+  bitangents = bitangents || [];
+
+  for (let indices_index = 0; indices_index < indices.length; ) {
+    const _indices = [
+      indices[indices_index++],
+      indices[indices_index++],
+      indices[indices_index++],
+    ];
+
+    const _coordinates = _indices.map(i => [
+      coordinates[i * 3 + 0],
+      coordinates[i * 3 + 1],
+      coordinates[i * 3 + 2],
+    ]);
+
+    const _texcoords = _indices.map(i => [
+      texcoords[i * 2 + 0],
+      texcoords[i * 2 + 1],
+    ]);
+
+    const edge1 = Array(3).fill().map((_, i) => _coordinates[1][i] - _coordinates[0][i]); // pos2 - pos1;
+    const edge2 = Array(3).fill().map((_, i) => _coordinates[2][i] - _coordinates[0][i]); // pos3 - pos1;
+    const dUV1  = Array(2).fill().map((_, i) => _texcoords[1][i] - _texcoords[0][i]); // uv2 - uv1;
+    const dUV2  = Array(2).fill().map((_, i) => _texcoords[2][i] - _texcoords[0][i]); // uv3 - uv1;
+    const f = 1.0 / (dUV1[0] * dUV2[1] - dUV2[0] * dUV1[1]);
+
+    const tangent = [
+      f * (dUV2[1] * edge1[0] - dUV1[1] * edge2[0]),
+      f * (dUV2[1] * edge1[1] - dUV1[1] * edge2[1]),
+      f * (dUV2[1] * edge1[2] - dUV1[1] * edge2[2]),
+    ];
+    const tmag = Math.hypot(...tangent);
+    tangents.push(...tangent.map(e => e / tmag));
+
+    const bitangent = [
+      f * (-dUV2[0] * edge1[0] + dUV1[0] * edge2[0]),
+      f * (-dUV2[0] * edge1[1] + dUV1[0] * edge2[1]),
+      f * (-dUV2[0] * edge1[2] + dUV1[0] * edge2[2]),
+    ];
+    const bmag = Math.hypot(...bitangent);
+    bitangents.push(...bitangent.map(e => e / bmag));
+  }
+
+  return {
+    tangents,
+    bitangents,
+  };
+}
+
+
+// draws btn
+WebGL.draw_btn = function (
+  ctx, viewport, matrix,
+  { coordinates, normals, tangents, bitangents, indices },
+  indices_start, indices_number)
+{
   indices_start = indices_start || 0;
   indices_number = indices_number || (indices.length - indices_start);
-  ctx.beginPath();
+  const scaler = 0.1;
+
   for (let i = indices_start; i < indices_start + indices_number; ++i) {
     const ii = indices[i];
     const p1 = [
@@ -347,80 +445,119 @@ WebGL.draw_vertex_normals = function (ctx, viewport, matrix, coordinates, normal
       coordinates[ii * 3 + 2],
     ];
     const p2 = [
-      normals[ii * 3 + 0] + p1[0],
-      normals[ii * 3 + 1] + p1[1],
-      normals[ii * 3 + 2] + p1[2],
+      normals[ii * 3 + 0] * scaler + p1[0],
+      normals[ii * 3 + 1] * scaler + p1[1],
+      normals[ii * 3 + 2] * scaler + p1[2],
+    ];
+    const p3 = [
+      tangents[ii * 3 + 0] * scaler + p1[0],
+      tangents[ii * 3 + 1] * scaler + p1[1],
+      tangents[ii * 3 + 2] * scaler + p1[2],
+    ];
+    const p4 = [
+      bitangents[ii * 3 + 0] * scaler + p1[0],
+      bitangents[ii * 3 + 1] * scaler + p1[1],
+      bitangents[ii * 3 + 2] * scaler + p1[2],
     ];
     const v1 = [];
     const v2 = [];
+    const v3 = [];
+    const v4 = [];
     WebGL.project(v1, p1, viewport, matrix);
     WebGL.project(v2, p2, viewport, matrix);
+    WebGL.project(v3, p3, viewport, matrix);
+    WebGL.project(v4, p4, viewport, matrix);
+    // normal
     if (v1 && v2) {
+      ctx.fillStyle = ctx.strokeStyle = 'blue';
+      ctx.beginPath();
       ctx.moveTo(v1[0], v1[1]);
       ctx.lineTo(v2[0], v2[1]);
-      ctx.fillText(ii, v2[0], v2[1]);
+      ctx.stroke();
     }
+    // tangent
+    if (v1 && v3) {
+      ctx.fillStyle = ctx.strokeStyle = 'red';
+      ctx.beginPath();
+      ctx.moveTo(v1[0], v1[1]);
+      ctx.lineTo(v3[0], v3[1]);
+      ctx.stroke();
+    }
+    // // bitangent
+    // if (v1 && v4) {
+    //   ctx.fillStyle = ctx.strokeStyle = 'green';
+    //   ctx.beginPath();
+    //   ctx.moveTo(v1[0], v1[1]);
+    //   ctx.lineTo(v4[0], v4[1]);
+    //   ctx.stroke();
+    // }
   }
-  ctx.stroke();
 }
 
 
-// defines cube
 WebGL.create_cube = function () {
-  /*
-   * (1) 0,1--->1,1 (2)
-   *      ^[1]/ ^|
-   *      |  / / |
-   *      | / /  |
-   *      |v /[2]v
-   * (0) 0,0<---1,0 (3)
-   */
+
+  const coordinates = [
+    0.0, 0.0, 1.0,    1.0, 0.0, 1.0,    1.0, 1.0, 1.0,    0.0, 1.0, 1.0, // Front
+    0.0, 0.0, 0.0,    0.0, 1.0, 0.0,    1.0, 1.0, 0.0,    1.0, 0.0, 0.0, // Back
+    0.0, 1.0, 0.0,    0.0, 1.0, 1.0,    1.0, 1.0, 1.0,    1.0, 1.0, 0.0, // Top
+    0.0, 0.0, 0.0,    1.0, 0.0, 0.0,    1.0, 0.0, 1.0,    0.0, 0.0, 1.0, // Bottom
+    1.0, 0.0, 0.0,    1.0, 1.0, 0.0,    1.0, 1.0, 1.0,    1.0, 0.0, 1.0, // Right
+    0.0, 0.0, 0.0,    0.0, 0.0, 1.0,    0.0, 1.0, 1.0,    0.0, 1.0, 0.0, // Left
+  ];
+
+  const normals = [
+     0.0,  0.0, +1.0,    0.0,  0.0, +1.0,    0.0,  0.0, +1.0,    0.0,  0.0, +1.0, // Front
+     0.0,  0.0, -1.0,    0.0,  0.0, -1.0,    0.0,  0.0, -1.0,    0.0,  0.0, -1.0, // Back
+     0.0, +1.0,  0.0,    0.0, +1.0,  0.0,    0.0, +1.0,  0.0,    0.0, +1.0,  0.0, // Top
+     0.0, -1.0,  0.0,    0.0, -1.0,  0.0,    0.0, -1.0,  0.0,    0.0, -1.0,  0.0, // Bottom
+    +1.0,  0.0,  0.0,   +1.0,  0.0,  0.0,   +1.0,  0.0,  0.0,   +1.0,  0.0,  0.0, // Right
+    -1.0,  0.0,  0.0,   -1.0,  0.0,  0.0,   -1.0,  0.0,  0.0,   -1.0,  0.0,  0.0, // Left
+  ];
+
+  const colors = [
+    1.0, 0.0, 0.0, 1.0,  1.0, 0.0, 0.0, 1.0,  1.0, 0.0, 0.0, 1.0,  1.0, 0.0, 0.0, 1.0, // Front (red)
+    0.0, 1.0, 0.0, 1.0,  0.0, 1.0, 0.0, 1.0,  0.0, 1.0, 0.0, 1.0,  0.0, 1.0, 0.0, 1.0, // Back (green)
+    1.0, 0.0, 1.0, 1.0,  1.0, 0.0, 1.0, 1.0,  1.0, 0.0, 1.0, 1.0,  1.0, 0.0, 1.0, 1.0, // Top (magenta)
+    0.0, 1.0, 1.0, 1.0,  0.0, 1.0, 1.0, 1.0,  0.0, 1.0, 1.0, 1.0,  0.0, 1.0, 1.0, 1.0, // Bottom (cyan)
+    0.0, 0.0, 1.0, 1.0,  0.0, 0.0, 1.0, 1.0,  0.0, 0.0, 1.0, 1.0,  0.0, 0.0, 1.0, 1.0, // Right (blue)
+    1.0, 1.0, 0.0, 1.0,  1.0, 1.0, 0.0, 1.0,  1.0, 1.0, 0.0, 1.0,  1.0, 1.0, 0.0, 1.0, // Left (yellow)
+  ];
+
+  const texcoords = [
+    0.0, 1.0,   1.0, 1.0,   1.0, 0.0,   0.0, 0.0, // Front
+    1.0, 1.0,   1.0, 0.0,   0.0, 0.0,   0.0, 1.0, // Back
+    0.0, 0.0,   0.0, 1.0,   1.0, 1.0,   1.0, 0.0, // Top
+    0.0, 1.0,   1.0, 1.0,   1.0, 0.0,   0.0, 0.0, // Bottom
+    1.0, 1.0,   1.0, 0.0,   0.0, 0.0,   0.0, 1.0, // Right
+    0.0, 1.0,   1.0, 1.0,   1.0, 0.0,   0.0, 0.0, // Left
+  ];
+
+  const indices = [
+     0,  1,  2,    2,  3,  0, // Front
+     4,  5,  6,    6,  7,  4, // Back
+     8,  9, 10,   10, 11,  8, // Top
+    12, 13, 14,   14, 15, 12, // Bottom
+    16, 17, 18,   18, 19, 16, // Right
+    20, 21, 22,   22, 23, 20, // Left
+  ];
+
+  const tangents = [
+    +1,  0,  0,    +1,  0,  0,    +1,  0,  0,    +1,  0,  0, // Front
+    -1,  0,  0,    -1,  0,  0,    -1,  0,  0,    -1,  0,  0, // Back
+    +1,  0,  0,    +1,  0,  0,    +1,  0,  0,    +1,  0,  0, // Top
+    +1,  0,  0,    +1,  0,  0,    +1,  0,  0,    +1,  0,  0, // Bottom
+     0,  0, -1,     0,  0, -1,     0,  0, -1,     0,  0, -1, // Right
+     0,  0, +1,     0,  0, +1,     0,  0, +1,     0,  0, +1, // Left
+  ];
+
   return {
-    // coordinates
-    coordinates: [
-      0, 0, 0,   0, 1, 0,   1, 1, 0,   1, 0, 0, // front (red)
-      0, 0, 1,   0, 1, 1,   1, 1, 1,   1, 0, 1, // back (green)
-      0, 0, 0,   0, 0, 1,   1, 0, 1,   1, 0, 0, // botton (magenta)
-      0, 1, 0,   0, 1, 1,   1, 1, 1,   1, 1, 0, // top (cyan)
-      0, 0, 0,   0, 1, 0,   0, 1, 1,   0, 0, 1, // left (blue)
-      1, 0, 0,   1, 1, 0,   1, 1, 1,   1, 0, 1, // right (yellow)
-    ],
-    // normals
-    normals: [
-      0,  0, -1,    0,  0, -1,    0,  0, -1,    0,  0, -1, // front (red)
-      0,  0, +1,    0,  0, +1,    0,  0, +1,    0,  0, +1, // back (green)
-      0, -1,  0,    0, -1,  0,    0, -1,  0,    0, -1,  0, // botton (magenta)
-      0, +1,  0,    0, +1,  0,    0, +1,  0,    0, +1,  0, // top (cyan)
-     -1,  0,  0,   -1,  0,  0,   -1,  0,  0,   -1,  0,  0, // left (blue)
-     +1,  0,  0,   +1,  0,  0,   +1,  0,  0,   +1,  0,  0, // right (yellow)
-    ],
-    // indices
-    indices: [
-       0,  1,  2,  2,  3,  0, // front (red)
-       4,  5,  6,  6,  7,  4, // back (green)
-       8,  9, 10, 10, 11,  8, // botton (magenta)
-      12, 13, 14, 14, 15, 12, // top (cyan)
-      16, 17, 18, 18, 19, 16, // left (blue)
-      20, 21, 22, 22, 23, 20, // right (yellow)
-    ],
-    // vertices colors
-    colors: [
-      1.0, 0.0, 0.0, 1.0,  1.0, 0.0, 0.0, 1.0,  1.0, 0.0, 0.0, 1.0,  1.0, 0.0, 0.0, 1.0, // front (red)
-      0.0, 1.0, 0.0, 1.0,  0.0, 1.0, 0.0, 1.0,  0.0, 1.0, 0.0, 1.0,  0.0, 1.0, 0.0, 1.0, // back (green)
-      1.0, 0.0, 1.0, 1.0,  1.0, 0.0, 1.0, 1.0,  1.0, 0.0, 1.0, 1.0,  1.0, 0.0, 1.0, 1.0, // botton (magenta)
-      0.0, 1.0, 1.0, 1.0,  0.0, 1.0, 1.0, 1.0,  0.0, 1.0, 1.0, 1.0,  0.0, 1.0, 1.0, 1.0, // top (cyan)
-      0.0, 0.0, 1.0, 1.0,  0.0, 0.0, 1.0, 1.0,  0.0, 0.0, 1.0, 1.0,  0.0, 0.0, 1.0, 1.0, // left (blue)
-      1.0, 1.0, 0.0, 1.0,  1.0, 1.0, 0.0, 1.0,  1.0, 1.0, 0.0, 1.0,  1.0, 1.0, 0.0, 1.0, // right (yellow)
-    ],
-    // texture coordinates
-    texcoords: [
-      1, 1,   1, 0,   0, 0,   0, 1, // front (red)
-      0, 1,   0, 0,   1, 0,   1, 1, // back (green)
-      1, 0,   1, 1,   0, 1,   0, 0, // botton (magenta)
-      1, 1,   1, 0,   0, 0,   0, 1, // top (cyan)
-      0, 1,   0, 0,   1, 0,   1, 1, // left (blue)
-      1, 1,   1, 0,   0, 0,   0, 1, // right (yellow)
-    ],
+    coordinates,
+    texcoords,
+    tangents,
+    normals,
+    indices,
+    colors,
   };
 }
 
@@ -431,7 +568,19 @@ WebGL.create_accessor = function (o) {
     if (key in o) return o[key];
     throw Error(`accessor:: key '${key}' does not exist`);
   }
+  accessor._itself_ = o;
   return accessor;
+}
+
+
+// cvt_mat4_to_mat3
+WebGL.cvt_mat4_to_mat3 = function (out, m4) {
+  out = [
+    m4[ 0], m4[ 1], m4[ 2],
+    m4[ 4], m4[ 5], m4[ 6],
+    m4[ 8], m4[ 9], m4[10],
+  ];
+  return out;
 }
 
 
