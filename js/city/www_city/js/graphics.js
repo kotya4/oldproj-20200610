@@ -139,7 +139,7 @@ function Graphics(screen_width, screen_height, parent) {
   /////////////////////////////////////
 
   const textures = WebGL.create_accessor({
-    normalmap2: 'data/normalmap2.png',
+    normalmap2: 'data/normalmap3.png',
     normalmap: 'data/normalmap.png',
     hello: 'data/image.png',
     cat: 'data/cat.png',
