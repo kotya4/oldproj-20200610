@@ -83,8 +83,6 @@ const FRAGMENT_SHADER =
 
   uniform sampler2D u_texture;
   uniform sampler2D u_normalmap;
-  uniform mat3 u_normalmatrix;
-  uniform vec3 u_camera_pos;
   uniform PointLight u_pointlights [POINTLIGHTS_NUM];
 
   in vec2 v_texuv;
@@ -100,7 +98,7 @@ const FRAGMENT_SHADER =
 
     vec3 camera_dir = normalize(v_T_camera_pos - v_T_frag_pos);
 
-    vec3 light = vec3(0.0);
+    vec3 light = vec3(0.1);
 
     for (int i = 0; i < POINTLIGHTS_NUM; ++i) {
       light += calc_pointlight(u_pointlights[i], v_T_light_pos[i], normal, v_T_frag_pos, camera_dir);

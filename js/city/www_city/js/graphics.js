@@ -19,7 +19,7 @@ function Graphics(screen_width, screen_height, parent) {
     u_normalmatrix: null,
     u_camera_pos:   null,
     u_pointlights: {
-      _array_: 5,
+      _array_: POINTLIGHTS_NUM,
       position:  null,
       constant:  null,
       linear:    null,
@@ -139,10 +139,16 @@ function Graphics(screen_width, screen_height, parent) {
   /////////////////////////////////////
 
   const textures = WebGL.create_accessor({
-    normalmap2: 'data/normalmap3.png',
-    normalmap: 'data/normalmap.png',
-    hello: 'data/image.png',
-    cat: 'data/cat.png',
+    'cat': 'data/cat.png',
+    'image': 'data/image.png',
+    'road_0': 'data/road-0.png',
+    'house_0': 'data/house-0.png',
+    'house_0_nm': "data/house-0-nm.png",
+    'house_1': 'data/house-1.png',
+    'house_2': 'data/house-2.png',
+    'normalmap': 'data/normalmap.png',
+    'normalmap2': 'data/normalmap2.png',
+    'normalmap3': 'data/normalmap3.png',
   });
 
   for (let key in textures._itself_) {
@@ -196,47 +202,14 @@ function Graphics(screen_width, screen_height, parent) {
     gl.uniform3fv(u_loc('u_pointlights')[i].specular,  e.specular);
   });
 
-  const translations = [
-    [0, 0, 0],
-    [4.94040087812412, 3.987188163399047, 5.333563764015848],
-    [9.882665749439973, 7.263054517516854, 5.2142342944726465],
-    [1.3382280357991116, 8.509423671314234, 5.017507653240967],
-    [4.58438238969226, 3.41690707038363, 1.7294431402702437],
-    [7.672708820361665, 0.6608901992581906, 1.4528536130439695],
-    [7.166167387728408, 5.506432974792741, 1.7030394827420703],
-    [2.888077919145806, 4.892005511920696, 7.2259086936694334],
-    [1.7169416273334237, 3.255576258782875, 4.683421921343067],
-    [2.6787295282562207, 0.9188925814701787, 7.006245703839209],
-    [7.013909696845719, 8.990429841975299, 1.279045888650614],
-  ];
-
-  const rotations = [
-    [0, 0, 0],
-
-    [5.866353746304541, 5.631868554762942, 6.185695486126797],
-    [5.747020701275975, 0.8210267437015922, 0.22965576767342694],
-    [6.04427580420977, 3.846960849313004, 1.673279563102401],
-    [5.593743781766915, 2.201574459681011, 1.3033987277337395],
-    [2.914617622332446, 3.967316944793016, 6.251481162542859],
-    [1.9041419751252278, 3.5333703835812877, 3.843013885856683],
-    [5.745853249217163, 0.68001135117034, 1.342017306606728],
-    [2.26381744129542, 5.133209780168478, 4.033699225254241],
-    [1.7615236836422663, 1.0567748494464113, 3.1109475452779445],
-    [4.796605142314438, 5.8870325569099675, 3.257300836630287],
-  ];
-
   /////////////////////////////////////
-  // CUBES (MODELVIEWS)              //
+  // BUILDINGS                       //
   /////////////////////////////////////
 
-  const cubes_modelviews = Array(10).fill().map((_, i) => {
+  const houses_modelviews = Array(2).fill().map((_, i) => {
     const m = mat4.create();
-    const translation = translations[i];
-    const rotation = rotations[i];
-    mat4.translate(m, m, translation);
-    mat4.rotateX(m, m, rotation[0]);
-    mat4.rotateY(m, m, rotation[1]);
-    mat4.rotateZ(m, m, rotation[2]);
+    mat4.translate(m, m, [10 * i - 5, 0, 0]);
+    mat4.scale(m, m, [5, 10, 5]);
     return m;
   });
 
@@ -244,7 +217,7 @@ function Graphics(screen_width, screen_height, parent) {
   // CodeDrawer              //
   /////////////////////////////
 
-  // вщ тще ащкпуе gl.clearColor(0, 0, 0, 0);
+  // gl.clearColor(0, 0, 0, 0);
   // const BGCTX=document.createElement('canvas').getContext('2d');BGCTX.canvas.width=webgl.viewport[2]
   // ;BGCTX.canvas.height=webgl.viewport[3];BGCTX.canvas.imageSmoothingEnabled=false;BGCTX.canvas.style
   // .zIndex=-100;document.body.appendChild(BGCTX.canvas);function BGCTXrender(){BGCTX.fillStyle='black'
@@ -304,6 +277,8 @@ function Graphics(screen_width, screen_height, parent) {
     // POINTLIGHTS (LAMPS)     //
     /////////////////////////////
 
+    gl.bindVertexArray(lamp_vao);
+
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, webgl.EMPTY_TEXTURE);
     gl.uniform1i(u_loc('u_texture'), 0);
@@ -311,8 +286,6 @@ function Graphics(screen_width, screen_height, parent) {
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, webgl.EMPTY_NORMALMAP);
     gl.uniform1i(u_loc('u_normalmap'), 1);
-
-    gl.bindVertexArray(lamp_vao);
 
     pointlights.forEach((e, i) => {
       e.position[0] += Math.cos(elapsed_acc * 0.001) * 0.01 * e.speedX * elapsed;
@@ -330,35 +303,32 @@ function Graphics(screen_width, screen_height, parent) {
       gl.uniformMatrix3fv(u_loc('u_normalmatrix'), false, normalmatrix);
 
       gl.drawElements(gl.TRIANGLES, cube.indices.length, gl.UNSIGNED_SHORT, 0);
-
     });
 
     /////////////////////////////
-    // CUBES                   //
+    // BUILDINGS               //
     /////////////////////////////
-
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, textures('cat'));
-    gl.uniform1i(u_loc('u_texture'), 0);
-
-    gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, textures('normalmap2'));
-    gl.uniform1i(u_loc('u_normalmap'), 1);
 
     gl.bindVertexArray(cube_vao);
 
-    for (let i = 0; i < cubes_modelviews.length; ++i) {
-      const modelview = cubes_modelviews[i];
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, textures('house_0'));
+    gl.uniform1i(u_loc('u_texture'), 0);
+
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, textures('house_0_nm'));
+    gl.uniform1i(u_loc('u_normalmap'), 1);
+
+    for (let i = 0; i < houses_modelviews.length; ++i) {
+
+      const modelview = houses_modelviews[i];
       const normalmatrix = mat3.transpose([], mat3.invert([], WebGL.cvt_mat4_to_mat3([], modelview)));
-      // const projectionview = mat4.multiply([], projection, modelview); // (debug)
+
       gl.uniformMatrix4fv(u_loc('u_modelview'), false, modelview);
       gl.uniformMatrix4fv(u_loc('u_projection'), false, projection);
       gl.uniformMatrix3fv(u_loc('u_normalmatrix'), false, normalmatrix);
 
       gl.drawElements(gl.TRIANGLES, cube.indices.length, gl.UNSIGNED_SHORT, 0);
-
-      // btn (debug)
-      // WebGL.draw_btn(ctx, webgl.viewport, projectionview, cube);
     }
 
     /////////////////////////////
