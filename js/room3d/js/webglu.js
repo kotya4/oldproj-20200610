@@ -10,75 +10,57 @@ function WebGLu() {
 }
 
 
-// creates cube
-WebGLu.cube = function () {
-  const coordinates = [
+// default cube model
+WebGLu.CUBE = {
+  coordinates: [
     0, 0, 1,    1, 0, 1,    1, 1, 1,    0, 1, 1, // Front
     0, 0, 0,    0, 1, 0,    1, 1, 0,    1, 0, 0, // Back
     0, 1, 0,    0, 1, 1,    1, 1, 1,    1, 1, 0, // Top
     0, 0, 0,    1, 0, 0,    1, 0, 1,    0, 0, 1, // Bottom
     1, 0, 0,    1, 1, 0,    1, 1, 1,    1, 0, 1, // Right
     0, 0, 0,    0, 0, 1,    0, 1, 1,    0, 1, 0, // Left
-  ];
-  const normals = [
+  ],
+  normals: [
      0,  0, +1,    0,  0, +1,    0,  0, +1,    0,  0, +1, // Front
      0,  0, -1,    0,  0, -1,    0,  0, -1,    0,  0, -1, // Back
      0, +1,  0,    0, +1,  0,    0, +1,  0,    0, +1,  0, // Top
      0, -1,  0,    0, -1,  0,    0, -1,  0,    0, -1,  0, // Bottom
     +1,  0,  0,   +1,  0,  0,   +1,  0,  0,   +1,  0,  0, // Right
     -1,  0,  0,   -1,  0,  0,   -1,  0,  0,   -1,  0,  0, // Left
-  ];
-  const colors = [
+  ],
+  colors: [
     1, 0, 0, 1,  1, 0, 0, 1,  1, 0, 0, 1,  1, 0, 0, 1, // Front (red)
     0, 1, 0, 1,  0, 1, 0, 1,  0, 1, 0, 1,  0, 1, 0, 1, // Back (green)
     1, 0, 1, 1,  1, 0, 1, 1,  1, 0, 1, 1,  1, 0, 1, 1, // Top (magenta)
     0, 1, 1, 1,  0, 1, 1, 1,  0, 1, 1, 1,  0, 1, 1, 1, // Bottom (cyan)
     0, 0, 1, 1,  0, 0, 1, 1,  0, 0, 1, 1,  0, 0, 1, 1, // Right (blue)
     1, 1, 0, 1,  1, 1, 0, 1,  1, 1, 0, 1,  1, 1, 0, 1, // Left (yellow)
-  ];
-  const texcoords = [
+  ],
+  texcoords: [
     0, 1,   1, 1,   1, 0,   0, 0, // Front
     1, 1,   1, 0,   0, 0,   0, 1, // Back
     0, 0,   0, 1,   1, 1,   1, 0, // Top
     0, 1,   1, 1,   1, 0,   0, 0, // Bottom
     1, 1,   1, 0,   0, 0,   0, 1, // Right
     0, 1,   1, 1,   1, 0,   0, 0, // Left
-  ];
-  const indices = [
+  ],
+  indices: [
      0,  1,  2,    2,  3,  0, // Front
      4,  5,  6,    6,  7,  4, // Back
      8,  9, 10,   10, 11,  8, // Top
     12, 13, 14,   14, 15, 12, // Bottom
     16, 17, 18,   18, 19, 16, // Right
     20, 21, 22,   22, 23, 20, // Left
-  ];
-  const tangents = [
+  ],
+  tangents: [
     +1,  0,  0,    +1,  0,  0,    +1,  0,  0,    +1,  0,  0, // Front
     -1,  0,  0,    -1,  0,  0,    -1,  0,  0,    -1,  0,  0, // Back
     +1,  0,  0,    +1,  0,  0,    +1,  0,  0,    +1,  0,  0, // Top
     +1,  0,  0,    +1,  0,  0,    +1,  0,  0,    +1,  0,  0, // Bottom
      0,  0, -1,     0,  0, -1,     0,  0, -1,     0,  0, -1, // Right
      0,  0, +1,     0,  0, +1,     0,  0, +1,     0,  0, +1, // Left
-  ];
-  return {
-    coordinates,
-    texcoords,
-    tangents,
-    normals,
-    indices,
-    colors,
-  };
-}
-
-
-// creates matrices stack
-WebGLu.stack_mat4 = function () {
-  return {
-    stack: [],
-    pop(m) { mat4.copy(m, this.stack.pop()); },
-    push(m) { this.stack.push(mat4.clone(m)); },
-  };
-}
+  ],
+};
 
 
 // projects 3D point into 2D screen space
@@ -301,19 +283,8 @@ WebGLu.draw_axis = function (ctx, viewport, matrix) {
 }
 
 
-// creates safe accessor
-WebGLu.accessor = function (o) {
-  function accessor(key) {
-    if (key in o) return o[key];
-    throw Error(`accessor:: key '${key}' does not exist`);
-  }
-  accessor._self_ = o;
-  return accessor;
-}
-
-
 // cvt_mat4_to_mat3
-WebGLu.cvt_mat4_to_mat3 = function (out, m4) {
+WebGLu.to_mat3 = function (out, m4) {
   out = [
     m4[ 0], m4[ 1], m4[ 2],
     m4[ 4], m4[ 5], m4[ 6],
@@ -323,8 +294,36 @@ WebGLu.cvt_mat4_to_mat3 = function (out, m4) {
 }
 
 
+// creates safe accessor
+WebGLu.access = function (o) {
+  function accessor(key) {
+    if (key in o) return o[key];
+    throw Error(`accessor:: key '${key}' does not exist`);
+  }
+  accessor._self_ = o;
+  return accessor;
+}
+
+
+// precision
+WebGLu.precision = function (value, prec) {
+  const t = (10 ** prec);
+  return ~~(value * t) / t;
+}
+
+
+// creates matrices stack
+WebGLu.Stack = function () {
+  return {
+    stack: [],
+    pop(m) { mat4.copy(m, this.stack.pop()); },
+    push(m) { this.stack.push(mat4.clone(m)); },
+  };
+}
+
+
 // creates fps camera
-WebGLu.camera = function (opt) {
+WebGLu.Camera = function (opt) {
   opt = opt || {};
   opt.position = opt.position || [-0.94, +1.43, -0.83];
   opt.pitch = opt.pitch || 0.12;
@@ -339,7 +338,8 @@ WebGLu.camera = function (opt) {
     up: [],
     center: [],
     mat_view: mat4.create(),
-    apply(m) {
+    save_timer: WebGLu.Timer(1000),
+    apply(m, elapsed) {
       // source: http://www.opengl-tutorial.org/beginners-tutorials/tutorial-6-keyboard-and-mouse/
       this.forward[0] = Math.cos(this.pitch) * Math.sin(this.yaw);
       this.forward[1] = Math.sin(this.pitch);
@@ -355,6 +355,15 @@ WebGLu.camera = function (opt) {
       vec3.add(this.center, this.position, this.forward);
       mat4.lookAt(this.mat_view, this.position, this.center, this.up);
       mat4.multiply(m, m, this.mat_view);
+      // save
+      if (elapsed && this.save_timer.tick(elapsed)) {
+        localStorage.setItem('camera', JSON.stringify({
+          position: this.position,
+          pitch: this.pitch,
+          roll: this.roll,
+          yaw: this.yaw,
+        }));
+      }
       return m;
     },
     ...opt,
@@ -363,7 +372,7 @@ WebGLu.camera = function (opt) {
 
 
 // creates keyboard
-WebGLu.keyboard = function (opt) {
+WebGLu.Keyboard = function (opt) {
   const keyboard = {
     keys: [],
     onkeydown(e) {
@@ -387,31 +396,46 @@ WebGLu.keyboard = function (opt) {
 
 
 // creates mouse
-WebGLu.mouse = function (opt) {
+WebGLu.Mouse = function (opt) {
   const mouse = {
     buttons: [],
     delta: null,
     x: null,
     y: null,
+    ox: null,
+    oy: null,
+    dx: 0,
+    dy: 0,
     onmousemove(e) {},
     onmousedown(e) {},
     onmouseup(e) {},
     onweel(e) {},
-    _onmousemove(e) {
+    get_NDC(rect) {
+      return {
+        x: this.x - rect.x,
+        y: this.y - rect.y,
+      };
+    },
+    dump_position(e) {
+      this.ox = this.x;
+      this.oy = this.y;
       this.x = e.x;
       this.y = e.y;
+      this.dx = this.x - this.ox;
+      this.dy = this.y - this.oy;
+    },
+    _onmousemove(e) {
+      this.dump_position(e);
       this.onmousemove(e);
     },
     _onmousedown(e) {
       this.buttons[e.button] = true;
-      this.x = e.x;
-      this.y = e.y;
+      this.dump_position(e);
       this.onmousedown(e);
     },
     _onmouseup(e) {
       this.buttons[e.button] = false;
-      this.x = e.x;
-      this.y = e.y;
+      this.dump_position(e);
       this.onmouseup(e);
     },
     _onweel(e) {
@@ -425,4 +449,50 @@ WebGLu.mouse = function (opt) {
   window.addEventListener('mouseup', e => mouse._onmouseup(e));
   window.addEventListener('wheel', e => mouse._onweel(e));
   return mouse;
+}
+
+
+// creates timer
+WebGLu.Timer = function (delay) {
+  return {
+    delay,
+    time: 0,
+    tick(acc, delay) {
+      this.delay = delay || this.delay;
+      if ((this.time += acc) >= this.delay) {
+        this.time = 0;
+        return true;
+      }
+      return false;
+    },
+  };
+}
+
+
+// creates timer for FPS
+WebGLu.FPS = function () {
+  return {
+    fps: 0,
+    elapsed: null,
+    time_counter: 0,
+    frame_counter: 0,
+    old_timestamp: null,
+    timer: WebGLu.Timer(),
+    get_elapsed_time(timestamp, elapsed_max = 100) {
+      this.elapsed = Math.min(timestamp - this.old_timestamp, elapsed_max);
+      this.old_timestamp = timestamp;
+      this.time_counter += this.elapsed;
+      this.frame_counter++;
+      return this.elapsed;
+    },
+    flush(delay = 200) {
+      if (this.timer.tick(this.elapsed, delay)) {
+        this.fps = (this.frame_counter / this.time_counter) * 1000;
+        this.fps = ~~(this.fps * 100) / 100;
+        this.frame_counter = 0;
+        this.time_counter = 0;
+      }
+      return this.fps;
+    },
+  };
 }

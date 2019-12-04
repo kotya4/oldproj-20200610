@@ -2,7 +2,7 @@
 // Some outter definitions       //
 ///////////////////////////////////
 
-const POINTLIGHTS_NUM = 4;
+const POINTLIGHTS_NUM = 1;
 
 const POINTLIGHTS =
 `
