@@ -1,3 +1,4 @@
+if (!vec2) var vec2 = glMatrix.vec2;
 if (!vec3) var vec3 = glMatrix.vec3;
 if (!vec4) var vec4 = glMatrix.vec4;
 if (!mat3) var mat3 = glMatrix.mat3;

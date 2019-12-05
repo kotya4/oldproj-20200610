@@ -136,9 +136,27 @@ function Graphics(screen_width, screen_height, parent) {
   ctx.fillStyle = 'white';
   ctx.lineWidth = 2;
 
-  ////////////////// RENDER //////////////////
+  // Public members.
+  const out = {
+    gl,
+    ctx,
+    webgl,
+    u_loc,
+    a_loc,
+    stack,
+    mouse,
+    camera,
+    keyboard,
+    textures,
+    projection,
+    render_cube,
+    render_lamp,
+    // Outter render function, can be redefined, calling in '_render' every frame.
+    render(timestamp, elapsed) { },
+  };
 
-  function render(timestamp = 0) {
+  // Inner render function, calls 'out.render', that can be modified outside of 'Graphics'.
+  function _render(timestamp = 0) {
     // Calculates elapsed time and makes some other FPS calculations.
     const elapsed = fps.get_elapsed_time(timestamp);
 
@@ -166,10 +184,8 @@ function Graphics(screen_width, screen_height, parent) {
     gl.uniform3fv(u_loc('u_camera_pos'), camera.position);
 
     // 3D-rendering happens here...
-
-    render_cube();
-
     render_lamp();
+    out.render(timestamp, elapsed);
 
     // Calculates scene center vector to draw as fourth (white) axis.
     const zp = WebGLu.project([], [0, 0, 0], webgl.viewport, projection);
@@ -216,18 +232,12 @@ function Graphics(screen_width, screen_height, parent) {
 
     // Restores 2D-context state and requests next frame.
     ctx.restore();
-    requestAnimationFrame(render);
+    requestAnimationFrame(_render);
   }
 
-  ////////////////////////////////////////////////
+  // Immideately run render function.
+  _render();
 
-  return {
-    stack,
-    mouse,
-    camera,
-    keyboard,
-    textures,
-    //////////////////
-    render,
-  }
+  // Returns public members.
+  return out;
 }

@@ -95,7 +95,7 @@ const FRAGMENT_SHADER =
   void main(void) {
     vec3 normal = normalize(texture(u_normalmap, v_texuv).rgb * 2.0 - 1.0);
     vec3 camera_dir = normalize(v_T_camera_pos - v_T_frag_pos);
-    vec3 light = vec3(0.1);
+    vec3 light = vec3(0.5);
 
     for (int i = 0; i < POINTLIGHTS_NUM; ++i) {
       light += calc_pointlight(u_pointlights[i], v_T_light_pos[i], normal, v_T_frag_pos, camera_dir);
