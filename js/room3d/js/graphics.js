@@ -5,7 +5,7 @@ function Graphics(screen_width, screen_height, parent) {
   if (!WebGL) throw Error('Graphics:: WebGL undefined');
   const { gl, webgl, ctx } = WebGL(screen_width, screen_height, parent);
 
-  // TIP: Call 'load_textures' fast as you can to load images asyncronously.
+  // TIP: Call 'load_textures' as fast as you can, images loades asyncronously.
   const textures = WebGLu.access(webgl.load_textures(DATA, [
     'cat',
     'normalmap',
@@ -43,7 +43,8 @@ function Graphics(screen_width, screen_height, parent) {
     a_tangent: null,
   }));
 
-  // cube
+  // Cube model.
+
   const cube_vao = webgl.bind_vao();
   webgl.bind_array_buffer(a_loc('a_color'),   new Float32Array(WebGLu.CUBE.colors),      4, gl.FLOAT);
   webgl.bind_array_buffer(a_loc('a_texuv'),   new Float32Array(WebGLu.CUBE.texcoords),   2, gl.FLOAT);
@@ -73,7 +74,8 @@ function Graphics(screen_width, screen_height, parent) {
     gl.drawElements(gl.TRIANGLES, WebGLu.CUBE.indices.length, gl.UNSIGNED_SHORT, 0);
   }
 
-  // lamp
+  // Lamp model.
+
   const lamp_vao = webgl.bind_vao();
   const lamp_size = 0.3;
   const lamp_translation = Array(3).fill(-lamp_size / 2);
@@ -120,73 +122,82 @@ function Graphics(screen_width, screen_height, parent) {
     gl.drawElements(gl.TRIANGLES, WebGLu.CUBE.indices.length, gl.UNSIGNED_SHORT, 0);
   }
 
-  const FPS = WebGLu.FPS();
+  // Some definitions here...
+  const fps = WebGLu.FPS();
   const stack = WebGLu.Stack();
   const mouse = WebGLu.Mouse();
   const camera = WebGLu.Camera(JSON.parse(localStorage.getItem('camera')));
   const keyboard = WebGLu.Keyboard();
   const projection = mat4.perspective([], Math.PI / 4, screen_width / screen_height, 0.1, 100.0);
 
+  // Changes 2D-context states globally.
   const font_size = 14;
   ctx.font = `${font_size}px "Roboto Mono"`;
   ctx.fillStyle = 'white';
   ctx.lineWidth = 2;
 
-  function render(timestamp = 0) {
-    const elapsed = FPS.get_elapsed_time(timestamp);
+  ////////////////// RENDER //////////////////
 
+  function render(timestamp = 0) {
+    // Calculates elapsed time and makes some other FPS calculations.
+    const elapsed = fps.get_elapsed_time(timestamp);
+
+    // Saves 2D-context state and clears both 2D and 3D screens.
     ctx.save();
     ctx.clearRect(...webgl.viewport);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+    // Saves projection matrix state.
     stack.push(projection);
 
-    // sets camera
-
+    // Some keyboard manipulations.
     if (keyboard.keys['KeyW']) camera.d_forward += 0.01 * elapsed;
     if (keyboard.keys['KeyS']) camera.d_forward -= 0.01 * elapsed;
-    if (keyboard.keys['KeyA']) camera.d_strafe -= 0.01 * elapsed;
-    if (keyboard.keys['KeyD']) camera.d_strafe += 0.01 * elapsed;
-    if (keyboard.keys['KeyE']) camera.d_up += 0.01 * elapsed;
-    if (keyboard.keys['KeyQ']) camera.d_up -= 0.01 * elapsed;
+    if (keyboard.keys['KeyA']) camera.d_strafe  -= 0.01 * elapsed;
+    if (keyboard.keys['KeyD']) camera.d_strafe  += 0.01 * elapsed;
+    if (keyboard.keys['KeyE']) camera.d_up      += 0.01 * elapsed;
+    if (keyboard.keys['KeyQ']) camera.d_up      -= 0.01 * elapsed;
 
+    // Udates camera matrices, changes projection applying camera position and rotation,
+    // and saves camera information into localstorage if elapsed time as second argument provided.
     camera.apply(projection, elapsed);
 
+    // Sends camera position into shader.
     gl.uniform3fv(u_loc('u_camera_pos'), camera.position);
 
+    // 3D-rendering happens here...
 
     render_cube();
 
     render_lamp();
 
+    // Calculates scene center vector to draw as fourth (white) axis.
+    const zp = WebGLu.project([], [0, 0, 0], webgl.viewport, projection);
+    let zpx = zp[0] - screen_width  / 2;
+    let zpy = zp[1] - screen_height / 2;
+    const zpmag = Math.hypot(zpx, zpy);
+    zpx = screen_width  / 2 + zpx / zpmag * 10;
+    zpy = screen_height / 2 + zpy / zpmag * 10;
 
-
-    /////////////////////////////
-    // ZERO POINT (DEBUG)      //
-    /////////////////////////////
-
-    // const zp = WebGLu.project([], [0, 0, 0], webgl.viewport, projection);
-    // ctx.strokeStyle = ctx.fillStyle = 'white';
-    // ctx.beginPath();
-    // ctx.moveTo(zp[0], zp[1]);
-    // ctx.ellipse(zp[0], zp[1], 2, 2, 0, 0, Math.PI * 2);
-    // ctx.fill();
-
+    // Restores projection matrix state.
     stack.pop(projection);
 
-    // DEBUG INFO
+    ////////////////// DEBUG INFO //////////////////
 
-    // fps
-    ctx.fillText(FPS.flush(1000), 0, font_size * 1);
-    // camera
-    ctx.fillText('pos: ' + camera.position.map(e => WebGLu.precision(e, 2)), 0, font_size * 2);
-    ctx.fillText('rot: ' + [camera.pitch, camera.yaw].map(e => WebGLu.precision(e, 2)), 0, font_size * 3);
-    // keyboard
+    // Prints fps.
+    ctx.fillText(fps.flush(1000), 0, font_size * 1);
+
+    // Prints camera information.
+    ctx.fillText('pos: ' + camera.position.map(e => WebGLu.prec(e, 2)), 0, font_size * 2);
+    ctx.fillText('rot: ' + [camera.pitch, camera.yaw].map(e => WebGLu.prec(e, 2)), 0, font_size * 3);
+
+    // Prints pressed keyboard buttons.
     let keyboad_offset = 0;
     for (let key in keyboard.keys)
       if (keyboard.keys[key])
         ctx.fillText(key, 0, font_size * (4 + (++keyboad_offset)));
-    // axis
+
+    // Draws axis into left bottom corner of screen.
     stack.push(projection);
     mat4.translate(projection, projection, [0, 0, -20]);
     mat4.rotateX(projection, projection, camera.pitch);
@@ -196,16 +207,27 @@ function Graphics(screen_width, screen_height, parent) {
     WebGLu.draw_axis(ctx, webgl.viewport, projection);
     stack.pop(projection);
 
-    // end of render
+    // Draws additional scene center vector.
+    ctx.strokeStyle = ctx.fillStyle = 'white';
+    ctx.beginPath();
+    ctx.moveTo(screen_width / 2, screen_height / 2);
+    ctx.lineTo(zpx, zpy);
+    ctx.stroke();
 
+    // Restores 2D-context state and requests next frame.
     ctx.restore();
     requestAnimationFrame(render);
   }
 
-  //////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////
 
   return {
+    stack,
+    mouse,
+    camera,
+    keyboard,
+    textures,
+    //////////////////
     render,
-    textures, stack, mouse, camera, keyboard,
   }
 }

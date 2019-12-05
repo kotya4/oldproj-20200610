@@ -306,7 +306,7 @@ WebGLu.access = function (o) {
 
 
 // precision
-WebGLu.precision = function (value, prec) {
+WebGLu.prec = function (value, prec) {
   const t = (10 ** prec);
   return ~~(value * t) / t;
 }
