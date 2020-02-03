@@ -1,0 +1,20 @@
+body {
+  font-size: 14px;
+  font-family: "Lucida Console", Monaco, monospace;
+  background-color: #111;
+  color: #aaa;
+  text-align: left;
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+  line-height: 20px;
+}
+
+.poem {
+
+}
+
+.name {
+  border: 1px solid;
+  padding: 10px;
+}
