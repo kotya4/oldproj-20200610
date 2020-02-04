@@ -155,6 +155,8 @@ function Graphics(screen_width, screen_height, parent) {
     render(timestamp, elapsed) { },
   };
 
+  var lamp_position = [1.2, 0.2, 1.5];
+
   // Inner render function, calls 'out.render', that can be modified outside of 'Graphics'.
   function _render(timestamp = 0) {
     // Calculates elapsed time and makes some other FPS calculations.
@@ -184,7 +186,7 @@ function Graphics(screen_width, screen_height, parent) {
     gl.uniform3fv(u_loc('u_camera_pos'), camera.position);
 
     // 3D-rendering happens here...
-    render_lamp();
+    render_lamp(lamp_position); // lamp_position[2] += Math.sin(timestamp * 0.001) * 0.03;
     out.render(timestamp, elapsed);
 
     // Calculates scene center vector to draw as fourth (white) axis.
@@ -199,6 +201,8 @@ function Graphics(screen_width, screen_height, parent) {
     stack.pop(projection);
 
     ////////////////// DEBUG INFO //////////////////
+
+    ctx.fillStyle = 'white';
 
     // Prints fps.
     ctx.fillText(fps.flush(1000), 0, font_size * 1);
