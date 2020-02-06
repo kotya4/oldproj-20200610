@@ -58,14 +58,18 @@ function RoomGenerator(space, rsize, pmin, pmax, rmin, rmax, Random) {
                         I(x - 1, y    ), I(x    , y    ), I(x + 1, y    ),
                         I(x - 1, y + 1), I(x + 0, y + 1), I(x + 1, y + 1), ];
       const C = rects[indices[4]]; // current rect
-      // creating dictionary R replacing all preys with eaters (greedy)
+      // creating dictionary R replacing all preys with eaters
       const R = {};
       for (let i = 0; i < names.length; ++i) {
         const r = rects[indices[i]];
         const a = (R[names[i]] = []);
         if (!r        ) {            continue; } // if no rect in this index, skip
+        if ( r === C  ) {            continue; } // do not add self
         if (!r.is_prey) { a.push(r); continue; } // if is a not prey, push itself
-        a.push(r.prey_TL, r.prey_BR);            // if is a prey, push eaters instead
+        // if is a prey, push eaters instead, but not add self
+        if (r.prey_TL !== C) { a.push(r.prey_TL); }
+        if (r.prey_BR !== C) { a.push(r.prey_BR); }
+
       }
 
       const tops = new Set([...R.TM]);
@@ -143,6 +147,7 @@ function RoomGenerator(space, rsize, pmin, pmax, rmin, rmax, Random) {
     //       почему. Дополнительное условие решает проблему.
     if (di && y2 - y1 < EPS || !di && x2 - x1 < EPS) return;
     const g = [x1, y1, x2, y2];
+    g.index = r.index; // save neighbour index
     (C.gaps[key].some(e => e.every((e,i) => e === g[i]))) || C.gaps[key].push(g);
   }
 
@@ -161,6 +166,12 @@ function RoomGenerator(space, rsize, pmin, pmax, rmin, rmax, Random) {
         ctx.lineWidth = 1;
         ctx.strokeStyle = ctx.fillStyle = `rgb(${r.color})`;
         ctx.fillText(r.index, r[0] * scaler + S1 + 5, r[1] * scaler + S1 + 14);
+
+        ctx.fillText('T:'+r.gaps.T.map(e => e.index), r[0] * scaler + S1 + 5, r[1] * scaler + S1 + 14 * 2);
+        ctx.fillText('L:'+r.gaps.L.map(e => e.index), r[0] * scaler + S1 + 5, r[1] * scaler + S1 + 14 * 3);
+        ctx.fillText('R:'+r.gaps.R.map(e => e.index), r[0] * scaler + S1 + 5, r[1] * scaler + S1 + 14 * 4);
+        ctx.fillText('B:'+r.gaps.B.map(e => e.index), r[0] * scaler + S1 + 5, r[1] * scaler + S1 + 14 * 5);
+
         r.gaps.T.forEach(e => draw_gap(e, [+S1, +S1, -S1, +S1]));
         r.gaps.L.forEach(e => draw_gap(e, [+S1, +S1, +S1, -S1]));
         r.gaps.R.forEach(e => draw_gap(e, [-S1, +S1, -S1, -S1]));

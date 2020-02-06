@@ -76,11 +76,11 @@ function Graphics(screen_width, screen_height, parent) {
 
   // Lamp model.
 
-  const lamp_vao = webgl.bind_vao();
   const lamp_size = 0.3;
   const lamp_translation = Array(3).fill(-lamp_size / 2);
   const lamp_scaler = Array(3).fill(lamp_size);
   const lamp_normals = WebGLu.CUBE.normals.map(e => -e);
+  const lamp_vao = webgl.bind_vao();
   webgl.bind_array_buffer(a_loc('a_color'),   new Float32Array(WebGLu.CUBE.colors),      4, gl.FLOAT);
   webgl.bind_array_buffer(a_loc('a_texuv'),   new Float32Array(WebGLu.CUBE.texcoords),   2, gl.FLOAT);
   webgl.bind_array_buffer(a_loc('a_coord'),   new Float32Array(WebGLu.CUBE.coordinates), 3, gl.FLOAT);
