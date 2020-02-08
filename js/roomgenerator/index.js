@@ -5,43 +5,12 @@ window.onload = function() {
   document.body.appendChild(ctx.canvas);
   ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-  const rg = RoomGenerator(10, 3, 0.2, 0.8, 0.6, 0.9, new Math.seedrandom('1'));
+  const rg = RoomGenerator({ space: 10, rsize: 3 }, new Math.seedrandom(7425));
+
   ctx.translate(20, 20);
-  rg.draw(ctx, 4, 8, 50);
+  rg.draw(ctx, 0, 0, 50);
   ctx.translate(600, 0);
   rg.draw_scheme(ctx);
-
-
-
-  // squeeze
-
-  // const rooms = [];
-  // {
-  //   const scaler = 0.1;
-
-  //   for (let r of rg.rects) {
-
-  //     let room = null;
-
-  //     if ('gaps' in r) {
-
-  //       room = [];
-
-  //       room.lines = [];
-
-  //       r.gaps.T.map(e => [e[0]+scaler, e[1]+scaler, e[2]-scaler, e[3]+scaler]);
-  //       r.gaps.L.map(e => [e[0]+scaler, e[1]+scaler, e[2]+scaler, e[3]-scaler]);
-  //       r.gaps.R.map(e => [e[0]-scaler, e[1]+scaler, e[2]-scaler, e[3]-scaler]);
-  //       r.gaps.B.map(e => [e[0]+scaler, e[1]-scaler, e[2]-scaler, e[3]-scaler]);
-
-
-
-  //     }
-
-  //     rooms.push(room);
-  //   }
-  // }
-
 
   ctx.translate(-50, 200);
   ctx.lineWidth = 1;

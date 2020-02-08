@@ -20,9 +20,13 @@ function RoomRenderer(rects) {
   function push_wall(wall) {
     const dx = wall[2] - wall[0];
     const dz = wall[3] - wall[1];
-    const is_along_x = !!dx;
+    const along_x = !!dx;
     const texscaler = Math.abs(dx||dz);
-    let dir; if (is_along_x) dir = dx > 0 ? 1 : 3; else dir = dz > 0 ? 0 : 2;
+    // z:[-;+] = 0
+    // x:[-;+] = 1
+    // z:[+;-] = 2
+    // x:[+;-] = 3
+    let dir; if (along_x) dir = dx > 0 ? 1 : 3; else dir = dz > 0 ? 0 : 2;
     const x1 = wall[0];
     const z1 = wall[1];
     const x2 = x1 + dx;

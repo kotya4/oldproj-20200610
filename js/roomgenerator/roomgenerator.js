@@ -1,18 +1,23 @@
 //
-function RoomGenerator(space, rsize, pmin, pmax, rmin, rmax, Random) {
-  Random = Random || Math.random;
+function RoomGenerator({ space, rsize, pmin, pmax, rmin, rmax, sque, door, doorjb, drnd }, Random) {
   space  = space  ||          10; // surface size
   rsize  = rsize  ||         1.2; // rect size
   pmin   = pmin   ||         0.2; // prey separator (%)
   pmax   = pmax   ||         0.8;
   rmin   = rmin   ||         0.7; // how small can be resized rect (%)
   rmax   = rmax   ||         0.9;
+  sque   = sque   ||         0.1; // squeezes rooms
+  door   = door   ||         1.0; // door size
+  doorjb = doorjb ||         0.2; // door safe offset (doorjamb)
+  drnd   = drnd   ||        0.05; // removes duplicit doors (%)
+  Random = Random || Math.random;
 
   const EPS = 0.1;              // see push_gap
   const rn = ~~(space / rsize); // rects number (same for columns and rows)
   const I = (x,y) => (x < 0 || x >= rn || y < 0 || y >= rn) ? -1 : (x + y * rn);
 
   const rects = []; // [x, y, w, h], ...
+  const points = [];
 
   {
     // Randomizes sizes of rows and columns, but saves geometry.
@@ -44,6 +49,15 @@ function RoomGenerator(space, rsize, pmin, pmax, rmin, rmax, Random) {
       else if (                  !(y < 1 || y >= rn - 1))
         absorb(I(x, y), I(x, y - 1), I(x, y + 1), 3, 1, 'VTB', 0.2, 0.8);
     }
+
+
+    // Squeezes.
+    rects.forEach(e => {
+      e[0] += sque;
+      e[1] += sque;
+      e[2] -= sque * 2;
+      e[3] -= sque * 2;
+    });
 
 
     // Calculates gaps.
@@ -96,7 +110,168 @@ function RoomGenerator(space, rsize, pmin, pmax, rmin, rmax, Random) {
       rights.forEach (r => push_gap('R', r, C, [1, 0, 1, 0, 1, 1, 1, 1], [0, 0, 0, 1, 0, -1, 0, 0], 1));
       bottoms.forEach(r => push_gap('B', r, C, [0, 1, 0, 1, 1, 1, 1, 1], [0, 0, 1, 0, -1, 0, 0, 0], 0));
     }
+
+
+    // Finding all doors (only bottom and right) and creates doors graph.
+    const graph = rects.map(_ => []);
+    for (let i = 0; i < rects.length; ++i) {
+      const r = rects[i];
+      if ('gaps' in r) {
+        for (let g of r.gaps.B) {
+          if ('door' in g) continue; // skip if door exists
+          const dlen = Math.abs(g[2] - g[0]) - (door + doorjb * 2);
+          if (dlen > 0) {
+            g.door = [g[0] + Random() * dlen + doorjb, g[1], door, sque * 2]; // (x, y, w, h)
+            graph[i].push(g.index);
+            graph[g.index].push(i);
+          }
+        }
+        for (let g of r.gaps.R) {
+          if ('door' in g) continue; // skip if door exists
+          const dlen = Math.abs(g[3] - g[1]) - (door + doorjb * 2);
+          if (dlen > 0) {
+            g.door = [g[0], g[1] + Random() * dlen + doorjb, sque * 2, door]; // (x, y, w, h)
+            graph[i].push(g.index);
+            graph[g.index].push(i);
+          }
+        }
+      }
+    }
+
+
+    // Graph optimization.
+    // 0--1--2
+    // |\ | /|
+    // 6--4--8   All possible connections are here.
+    //  \ | /
+    //    7
+    const G = graph.map(_ => new Set());
+    const used = [];
+    // First index is random.
+    let index;
+    for (let INF = graph.length; --INF; ) {
+      (index = Random() * graph.length | 0);
+      if (!graph[index].length) index = (index + 1) % graph.length; else break;
+    }
+    // Creates optimised graph G (w/o duplicit edges).
+    (function push_edge(i) {
+      for (let k of graph[i]) {
+        used[i] = true;
+        if (!used[k]) {
+          used[k] = true;
+          G[i].add(k);
+          G[k].add(i);
+          push_edge(k);
+        }
+      }
+    })(index);
+    // 0--1  2
+    // |    /|
+    // 6  4  8   Duplicit connections removed.
+    //  \ |
+    //    7
+    // Additional edges.
+    for (let i = 0; i < G.length; ++i)
+      for (let k of graph[i])
+        if (Random() < drnd)
+        {
+          G[i].add(k);
+          G[k].add(i);
+        }
+    // 0--1  2
+    // |\ | /|
+    // 6  4--8   Some random duplications added.
+    //  \ |
+    //    7
+
+
+    // Removes doors according to optimized graph.
+    for (let i = 0; i < rects.length; ++i) {
+      const r = rects[i];
+      if ('gaps' in r) {
+        for (let g of r.gaps.B)
+          if ('door' in g && ([...G[i]].findIndex(j => j === g.index) < 0))
+            delete g.door;
+        for (let g of r.gaps.R)
+          if ('door' in g && ([...G[i]].findIndex(j => j === g.index) < 0))
+            delete g.door;
+        // Creates points for RoomRenderer.
+        r.pointsT = [r[0], r[0] + r[2]];
+        r.pointsB = [r[0], r[0] + r[2]];
+        r.pointsL = [r[1], r[1] + r[3]];
+        r.pointsR = [r[1], r[1] + r[3]];
+      }
+    }
+
+
+    // Adds doors to the points.
+    for (let i = 0; i < rects.length; ++i) {
+      const r = rects[i];
+      if ('gaps' in r) {
+        for (let g of r.gaps.B)
+          if ('door' in g)
+          {
+            const p1 = g.door[0], p2 = g.door[0] + g.door[2];
+            r.pointsB.push(p1, p2);
+            rects[g.index].pointsT.push(p1, p2);
+          }
+        for (let g of r.gaps.R)
+          if ('door' in g)
+          {
+            const p1 = g.door[1], p2 = g.door[1] + g.door[3];
+            r.pointsR.push(p1, p2);
+            rects[g.index].pointsL.push(p1, p2);
+          }
+      }
+    }
+
+
+    // Sorts points.
+    for (let r of rects) {
+      if ('gaps' in r) {
+
+        r.pointsT = r.pointsT.sort((a,b) => a - b).map(p => [p, r[1]       ]);
+        r.pointsB = r.pointsB.sort((a,b) => a - b).map(p => [p, r[1] + r[3]]);
+        r.pointsL = r.pointsL.sort((a,b) => a - b).map(p => [r[0]       , p]);
+        r.pointsR = r.pointsR.sort((a,b) => a - b).map(p => [r[0] + r[2], p]);
+
+        for (let i = 0; i < r.pointsT.length; i += 2) {
+          const x1 = r.pointsT[i + 0][0];
+          const y1 = r.pointsT[i + 0][1];
+          const x2 = r.pointsT[i + 1][0];
+          const y2 = r.pointsT[i + 1][1];
+          points.push([x1, y1, x2, y2]);
+        }
+
+        for (let i = 0; i < r.pointsB.length; i += 2) {
+          const x1 = r.pointsB[i + 0][0];
+          const y1 = r.pointsB[i + 0][1];
+          const x2 = r.pointsB[i + 1][0];
+          const y2 = r.pointsB[i + 1][1];
+          points.push([x2, y2, x1, y1]);
+        }
+
+        for (let i = 0; i < r.pointsL.length; i += 2) {
+          const x1 = r.pointsL[i + 0][0];
+          const y1 = r.pointsL[i + 0][1];
+          const x2 = r.pointsL[i + 1][0];
+          const y2 = r.pointsL[i + 1][1];
+          points.push([x2, y2, x1, y1]);
+        }
+
+        for (let i = 0; i < r.pointsR.length; i += 2) {
+          const x1 = r.pointsR[i + 0][0];
+          const y1 = r.pointsR[i + 0][1];
+          const x2 = r.pointsR[i + 1][0];
+          const y2 = r.pointsR[i + 1][1];
+          points.push([x1, y1, x2, y2]);
+        }
+      }
+    }
   }
+
+
+  ////////////////////////////////////////////////////////////////
 
 
   // Randomizes sizes of rows and columns, but saves geometry.
@@ -165,6 +340,7 @@ function RoomGenerator(space, rsize, pmin, pmax, rmin, rmax, Random) {
       if ('gaps' in r) {
         ctx.lineWidth = 1;
         ctx.strokeStyle = ctx.fillStyle = `rgb(${r.color})`;
+
         ctx.fillText(r.index, r[0] * scaler + S1 + 5, r[1] * scaler + S1 + 14);
 
         ctx.fillText('T:'+r.gaps.T.map(e => e.index), r[0] * scaler + S1 + 5, r[1] * scaler + S1 + 14 * 2);
@@ -176,7 +352,19 @@ function RoomGenerator(space, rsize, pmin, pmax, rmin, rmax, Random) {
         r.gaps.L.forEach(e => draw_gap(e, [+S1, +S1, +S1, -S1]));
         r.gaps.R.forEach(e => draw_gap(e, [-S1, +S1, -S1, -S1]));
         r.gaps.B.forEach(e => draw_gap(e, [+S1, -S1, -S1, -S1]));
+
+        ctx.strokeStyle = ctx.fillStyle = `rgb(${r.color.map(e => e >> 2)})`;
         ctx.strokeRect(r[0] * scaler + S2, r[1] * scaler + S2, r[2] * scaler - S2 * 2, r[3] * scaler - S2 * 2);
+
+        ctx.strokeStyle = ctx.fillStyle = `rgb(${r.color})`;
+        r.gaps.B.forEach(e => (e.door) && ctx.fillRect(
+          e.door[0] * scaler + S1,     e.door[1] * scaler + S1    ,
+          e.door[2] * scaler + S1 * 2, e.door[3] * scaler + S1 * 2,
+        ));
+        r.gaps.R.forEach(e => (e.door) && ctx.fillRect(
+          e.door[0] * scaler + S1,     e.door[1] * scaler + S1    ,
+          e.door[2] * scaler + S1 * 2, e.door[3] * scaler + S1 * 2,
+        ));
       }
     }
   }
@@ -204,6 +392,7 @@ function RoomGenerator(space, rsize, pmin, pmax, rmin, rmax, Random) {
 
   // Out.
   return {
+    points,
     rects,
     draw,
     draw_scheme,

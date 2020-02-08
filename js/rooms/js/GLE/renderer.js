@@ -18,12 +18,15 @@ function Renderer(g) {
 
   // Room defined.
 
-  const rects = [
-    [ 0, 0,  3, 0],
-    [ 3, 0,  3, 5],
-    [ 3, 5,  0, 5],
-    [ 0, 5,  0, 0],
-  ];
+  const rg = RoomGenerator({ space: 10, rsize: 3 }, new Math.seedrandom(7425));
+
+  const rects = rg.points;
+  // const rects = [
+  //   [ 0, 0,  3, 0],
+  //   [ 3, 0,  3, 5],
+  //   [ 3, 5,  0, 5],
+  //   [ 0, 5,  0, 0],
+  // ];
 
   // Generates room model.
 
