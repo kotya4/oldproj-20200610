@@ -7,7 +7,7 @@ function RoomGenerator({ space, rsize, pmin, pmax, rmin, rmax, sque, door, doorj
   rmin   = rmin   ||         0.7; // how small can be resized rect (%)
   rmax   = rmax   ||         0.9;
   sque   = sque   ||         0.1; // squeezes rooms
-  door   = door   ||         1.0; // door size
+  door   = door   ||         0.8; // door size
   doorjb = doorjb ||         0.2; // door safe offset (doorjamb)
   drnd   = drnd   ||        0.05; // removes duplicit doors (%)
   Random = Random || Math.random;
@@ -18,6 +18,13 @@ function RoomGenerator({ space, rsize, pmin, pmax, rmin, rmax, sque, door, doorj
 
   const rects = []; // [x, y, w, h], ...
   const points = [];
+  const vaodata = { // VAO data.
+    coordinates: [],
+    texcoords  : [],
+    tangents   : [],
+    normals    : [],
+    indices    : [],
+  };
 
   {
     // Randomizes sizes of rows and columns, but saves geometry.
@@ -208,20 +215,16 @@ function RoomGenerator({ space, rsize, pmin, pmax, rmin, rmax, sque, door, doorj
     for (let i = 0; i < rects.length; ++i) {
       const r = rects[i];
       if ('gaps' in r) {
-        for (let g of r.gaps.B)
-          if ('door' in g)
-          {
-            const p1 = g.door[0], p2 = g.door[0] + g.door[2];
-            r.pointsB.push(p1, p2);
-            rects[g.index].pointsT.push(p1, p2);
-          }
-        for (let g of r.gaps.R)
-          if ('door' in g)
-          {
-            const p1 = g.door[1], p2 = g.door[1] + g.door[3];
-            r.pointsR.push(p1, p2);
-            rects[g.index].pointsL.push(p1, p2);
-          }
+        for (let g of r.gaps.B) if ('door' in g) {
+          const p1 = g.door[0], p2 = g.door[0] + g.door[2];
+          r.pointsB.push(p1, p2);
+          rects[g.index].pointsT.push(p1, p2);
+        }
+        for (let g of r.gaps.R) if ('door' in g) {
+          const p1 = g.door[1], p2 = g.door[1] + g.door[3];
+          r.pointsR.push(p1, p2);
+          rects[g.index].pointsL.push(p1, p2);
+        }
       }
     }
 
@@ -229,45 +232,23 @@ function RoomGenerator({ space, rsize, pmin, pmax, rmin, rmax, sque, door, doorj
     // Sorts points.
     for (let r of rects) {
       if ('gaps' in r) {
-
         r.pointsT = r.pointsT.sort((a,b) => a - b).map(p => [p, r[1]       ]);
         r.pointsB = r.pointsB.sort((a,b) => a - b).map(p => [p, r[1] + r[3]]);
         r.pointsL = r.pointsL.sort((a,b) => a - b).map(p => [r[0]       , p]);
         r.pointsR = r.pointsR.sort((a,b) => a - b).map(p => [r[0] + r[2], p]);
-
-        for (let i = 0; i < r.pointsT.length; i += 2) {
-          const x1 = r.pointsT[i + 0][0];
-          const y1 = r.pointsT[i + 0][1];
-          const x2 = r.pointsT[i + 1][0];
-          const y2 = r.pointsT[i + 1][1];
-          points.push([x1, y1, x2, y2]);
-        }
-
-        for (let i = 0; i < r.pointsB.length; i += 2) {
-          const x1 = r.pointsB[i + 0][0];
-          const y1 = r.pointsB[i + 0][1];
-          const x2 = r.pointsB[i + 1][0];
-          const y2 = r.pointsB[i + 1][1];
-          points.push([x2, y2, x1, y1]);
-        }
-
-        for (let i = 0; i < r.pointsL.length; i += 2) {
-          const x1 = r.pointsL[i + 0][0];
-          const y1 = r.pointsL[i + 0][1];
-          const x2 = r.pointsL[i + 1][0];
-          const y2 = r.pointsL[i + 1][1];
-          points.push([x2, y2, x1, y1]);
-        }
-
-        for (let i = 0; i < r.pointsR.length; i += 2) {
-          const x1 = r.pointsR[i + 0][0];
-          const y1 = r.pointsR[i + 0][1];
-          const x2 = r.pointsR[i + 1][0];
-          const y2 = r.pointsR[i + 1][1];
-          points.push([x1, y1, x2, y2]);
-        }
+        for (let i = 0; i < r.pointsT.length; i += 2) points.push([...r.pointsT[i+0],...r.pointsT[i+1]]);
+        for (let i = 0; i < r.pointsB.length; i += 2) points.push([...r.pointsB[i+1],...r.pointsB[i+0]]);
+        for (let i = 0; i < r.pointsL.length; i += 2) points.push([...r.pointsL[i+1],...r.pointsL[i+0]]);
+        for (let i = 0; i < r.pointsR.length; i += 2) points.push([...r.pointsR[i+0],...r.pointsR[i+1]]);
       }
     }
+
+
+
+
+
+
+
   }
 
 

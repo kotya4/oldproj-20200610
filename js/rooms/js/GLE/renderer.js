@@ -30,7 +30,7 @@ function Renderer(g) {
 
   // Generates room model.
 
-  const room = RoomRenderer(rects);
+  const room = RoomRenderer(rg);
 
   // Creates VAO out of it.
 

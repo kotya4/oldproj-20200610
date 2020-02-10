@@ -186,7 +186,7 @@ function Graphics(screen_width, screen_height, parent) {
     gl.uniform3fv(u_loc('u_camera_pos'), camera.position);
 
     // 3D-rendering happens here...
-    render_lamp(lamp_position); // lamp_position[2] += Math.sin(timestamp * 0.001) * 0.03;
+    render_lamp(lamp_position); // lamp_position[0] += Math.sin(timestamp * 0.001) * 0.03;
     out.render(timestamp, elapsed);
 
     // Calculates scene center vector to draw as fourth (white) axis.
