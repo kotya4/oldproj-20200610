@@ -1,3 +1,6 @@
+//
+// SEE LAST VERSION ON GLITCH: https://glitch.com/~shared-mangosteen-2oi677rnx4y
+//
 window.onload = function() {
   const SIZE = 100; // maximum capacity of data (used in different ways)
   const RULES_NUM = 10;
@@ -62,12 +65,14 @@ window.onload = function() {
     // [range] may be POINT(x,y), BRESENHAM(p1,p2), RECT(p1,p2), CIRCLE(r).                            //
     //      Argument is a random number between [MIN,MAX], MIN,MAX = [-SIZE,+SIZE], always MIN <= MAX. //
     // [how much] may be: 'one', 'all', 'some', 'exactly N', 'from N to M', 'N or less', 'N or more'   //
-    // TODO: number of executed rules
+    // TODO: number of executed rules                                                                  //
     //                                                                                                 //
     // Number of rules between [1, N].                                                                 //
     //                                                                                                 //
     // The criteria:                                                                                   //
     // number of steps until stablizing, number of stable steps, average alive cells (%) in stable.    //
+    //                                                                                                 //
+    //[do, howmuch, howmuchvalue, howmuchvaluemax, range, rangedx1, rangedx2, rangedy1, rangedy2, what]//
     /////////////////////////////////////////////////////////////////////////////////////////////////////
     const rules_num = rules_min + Math.random() * (rules_max - rules_min) | 0;
     for (let i = 0; i < rules_num; ++i) {
@@ -151,7 +156,7 @@ window.onload = function() {
         _range_dy2_, _what_, _how_much_value_max_ } = rule;
 
       // skip if nothing can be done with cell
-      // _do_: 0 - die, 1 - burn, 2 - reverse
+      // _do_: 0 - die, 1 - born, 2 - reverse
       if (cell === 0 && _do_ === 0 || cell !== 0 && _do_ === 1) continue;
 
       let is_rule_executed = false;
@@ -373,5 +378,4 @@ window.onload = function() {
     rulesdiv.innerText = 'RULES:\n' + print_rules() + '\nRAW:\n' + print_rules_raw();
     init();
   }
-
 }
