@@ -1,0 +1,165 @@
+
+/* ContentEditable Placeholder */
+[contentEditable=true]:empty:not(:focus):before {
+    content: attr(placeholder);
+    color: #555;
+}
+
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+}
+::-webkit-scrollbar-track {
+  background: #e85879;
+}
+::-webkit-scrollbar-thumb {
+  background: #e85879;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #e85879;
+}
+
+/* Body */
+body {
+  background-color: #111;
+  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  font-family: "Lucida Console", monospace;
+  font-size: 14px;
+  display: flex;
+  padding: 0;
+  margin: 0;
+  height: 100vh;
+  color: #aaa;
+}
+
+/* Link */
+a {
+  text-decoration: none;
+  color: hotpink;
+}
+
+/* Container */
+.container {
+  flex-direction: column;
+  border-left: 5px solid #e85879;
+  align-items: center;
+  overflow-y: scroll;
+  overflow-x: none;
+  background: #222;
+  display: flex;
+  height: 100%;
+  width: 500px;
+}
+
+/* Card */
+.card {
+  margin: 20px;
+  width: 400px;
+}
+  .card .title {
+    justify-content: space-between;
+    align-items: center;
+    background: #222;
+    font-size: 11px;
+    padding: 5px 0;
+    display: flex;
+  }
+    .card .title .name {
+      /*background: #111;*/
+      padding: 0 5px;
+    }
+    .card .title .link {
+
+    }
+  .card .body {
+    border-radius: 0 5px 0 5px;
+    background: #333;
+    padding: 5px;
+  }
+  .card .foot {
+    background: #222;
+    text-align: right;
+    font-size: 11px;
+    padding: 5px 0;
+  }
+    .card .foot .date {
+      background: #111;
+      padding: 0 5px;
+    }
+/* Card [End] */
+
+
+/* Editor */
+.editor {
+  /*height: 100px;*/
+  width: 495px;
+
+  background: linear-gradient(#e85879 55%, transparent 25%);
+/*
+  background-image: linear-gradient(45deg, #e85879 25%, transparent 25%), linear-gradient(-45deg, #e85879 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e85879 75%), linear-gradient(-45deg, transparent 75%, #e85879 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+*/
+  /*background: #222;*/
+  flex-direction: column;
+  align-items: center;
+  display: flex;
+  padding: 10px 0 30px 0;
+  color: #111;
+}
+  .editor .foot {
+    margin-top: 5px;
+    width: 410px;
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+  }
+  .editor .button {
+    background: #e85879;
+    height: 15px;
+    padding: 5px;
+    user-select: none;
+    color: #111;
+  }
+    .editor .button:hover {
+      background: #e33960;
+      color: #aaa;
+    }
+  .editor .textarea {
+    background: #c995a1;
+    margin: 20px;
+    padding: 5px;
+    width: 400px;
+  }
+  .editor .textarea.disc {
+    min-height: 64px;
+    width: 400px;
+    margin-bottom: 0px;
+  }
+  .editor .textarea.name {
+    height: 15px;
+    font-size: 11px;
+    margin: 0 5px 0 0;
+  }
+/* Editor [End] */
+
+
+/* Footer */
+.footer {
+
+}
+
+
+/* Canvas */
+.canvas {
+  image-rendering: pixelated;
+  position: absolute;
+  z-index: -1;
+  height: 100%;
+  width: 100%;
+  left: 0;
+  top: 0;
+}
