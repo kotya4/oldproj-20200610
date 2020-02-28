@@ -1,0 +1,31 @@
+body {
+  overflow-y: hidden;
+  overflow-x: hidden;
+  
+}
+.cats-wrapper {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: orange;
+}
+.cat {
+  position: absolute;
+  width: 178px;
+  height: 183px;
+  top: -100px;
+  left: 0;
+  background-color: orange;
+}
+.title {
+  font-family: "Comic Sans MS", cursive, sans-serif;
+  font-size: 12px;
+  position: absolute;
+  left: 0;
+  top: 50%;
+  text-align: center;
+  width: 100%;
+  color: yellow;
+}

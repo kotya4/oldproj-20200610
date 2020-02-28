@@ -1,0 +1,14 @@
+
+#wrapper {
+
+}
+
+.container {
+  margin: 10px;
+}
+
+#canvas {
+  position: absolute;
+  left: 400px;
+  top: 10px;
+}

@@ -1,0 +1,39 @@
+body {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 12px;
+  background-color: #111;
+  color: white;
+}
+
+canvas {
+  image-rendering: pixelated;
+}
+
+.wrapper {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.interface {
+  width: 250px;
+  display: none;
+}
+
+#activator {
+  user-select: none;
+  width: 250px;
+  color: grey;
+  background: black;
+}
+
+#activator:hover {
+  color: white;
+  background: red;
+  cursor: pointer;
+}

@@ -1,0 +1,60 @@
+#!/bin/bash
+PNAME=$1
+PTYPE=$2
+PPATH="_templates"
+ALLOWED_TYPES=(`find "$PPATH/"* -maxdepth 0 -type d -exec basename {} \;`)
+
+
+PPATH_ERR=false
+while [ -z $PNAME ]; do
+  if [ $PPATH_ERR = true ]; then
+    echo -e "\e[31mProject name error.\e[0m"
+  fi
+  PPATH_ERR=true
+  echo -e "Print project \e[93mNAME\e[0m: \c "
+  read  PNAME
+done
+
+PTYPE_ERR=false
+while : ; do
+    LOOP_EXIT=false
+    for type in "${ALLOWED_TYPES[@]}"; do
+      if [ $type = "$PTYPE" ]; then
+        LOOP_EXIT=true
+        break
+      fi
+    done
+    if [ $LOOP_EXIT = true ]; then
+      break
+    fi
+    if [ $PTYPE_ERR = true ]; then
+      echo -e "\e[31mProject type error.\e[0m"
+    fi
+    PTYPE_ERR=true
+    echo -e "Print project \e[93mTYPE\e[0m: \c "
+    read PTYPE
+done
+
+PREFIX=""
+if [ $PTYPE != "js" ]; then
+  PREFIX="$PTYPE""_"
+fi
+
+NEWPATH="$PREFIX$PNAME"
+if [ -d $NEWPATH ]; then
+  echo -e "Project \e[91m$NEWPATH\e[0m already exists."
+  exit 1
+fi
+
+#rm -r "$NEWPATH/"
+cp -R "$PPATH/$PTYPE/." "$NEWPATH/"
+find "$NEWPATH/"* -name "*" -type f | xargs sed -i -e "s/__PROJECT__/$PNAME/g"
+
+for f in `find "$NEWPATH" -name "*__PROJECT__*" | sort -r` ; do
+  BASE=`basename $f`
+  DIR=`dirname $f`
+  NEWBASE=${BASE//__PROJECT__/$PNAME}
+  mv "$DIR/$BASE" "$DIR/$NEWBASE"
+done
+
+echo -e "Project \e[92m$NEWPATH\e[0m created."

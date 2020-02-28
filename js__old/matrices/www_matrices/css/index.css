@@ -1,0 +1,3 @@
+.matrices { display: flex; align-items: center; }
+.err-msg { color: red; }
+.values { width: 40px; }

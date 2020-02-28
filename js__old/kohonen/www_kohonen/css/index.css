@@ -1,0 +1,22 @@
+body {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 12px;
+  margin: 10px;
+}
+
+td {
+  font-size: 12px;
+  background-color: lightgrey;
+  width: 50px;
+}
+
+#text-wrapper {
+  width: 500px;
+  height: 100%;
+  overflow-y: scroll;
+  float: left;
+}
+
+canvas {
+  margin-left: 10px;
+}
