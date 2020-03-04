@@ -20,9 +20,9 @@ window.onload = async function () {
     [1,0,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
     [1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
     [1,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1],
-    [1,0,0,1,0,1,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-    [1,0,0,1,0,1,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-    [0,0,0,1,0,1,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+    [1,0,0,1,0,1,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [1,0,0,1,0,1,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+    [0,0,0,1,0,1,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
     [0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0],
     [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
     [1,0,0,0,0,0,0,0,0,1,1,1,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
@@ -38,6 +38,8 @@ window.onload = async function () {
     [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
     [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
   ];
+
+
 
 
 
@@ -60,59 +62,53 @@ window.onload = async function () {
 
   };
 
-  const fov = Math.PI / 4;
-  const minimap_scale = 1;
+  // const fov = Math.PI / 4;
+  // const minimap_scale = 1;
 
-  function draw_ray(ox, oy, x, y) {
-    const grad = ctx.createLinearGradient(oy * minimap_scale, ox * minimap_scale, y * minimap_scale, x  * minimap_scale);
-    grad.addColorStop(0, 'yellow');
-    grad.addColorStop(1, 'red');
+  // function draw_ray(ox, oy, x, y) {
+  //   const grad = ctx.createLinearGradient(oy * minimap_scale, ox * minimap_scale, y * minimap_scale, x  * minimap_scale);
+  //   grad.addColorStop(0, 'yellow');
+  //   grad.addColorStop(1, 'red');
 
-    ctx.strokeStyle = grad;
-    ctx.beginPath();
-    ctx.moveTo(oy * minimap_scale, ox * minimap_scale);
-    ctx.lineTo(y * minimap_scale, x * minimap_scale);
-    ctx.stroke();
-  }
+  //   ctx.strokeStyle = grad;
+  //   ctx.beginPath();
+  //   ctx.moveTo(oy * minimap_scale, ox * minimap_scale);
+  //   ctx.lineTo(y * minimap_scale, x * minimap_scale);
+  //   ctx.stroke();
+  // }
 
-  function draw_minimap() {
-    const line_scaler = 10;
+  // function draw_minimap() {
+  //   const line_scaler = 10;
 
-    for (let x = 0; x < map.length; ++x) for (let y = 0; y < map[0].length; ++y) {
-      ctx.fillStyle = map[x][y] ? 'grey' : 'black';
-      ctx.fillRect(y*minimap_scale|0, x*minimap_scale|0, minimap_scale, minimap_scale);
-    }
+  //   for (let x = 0; x < map.length; ++x) for (let y = 0; y < map[0].length; ++y) {
+  //     ctx.fillStyle = map[x][y] ? 'grey' : 'black';
+  //     ctx.fillRect(y*minimap_scale|0, x*minimap_scale|0, minimap_scale, minimap_scale);
+  //   }
 
-    const px = player.x%map.length;
-    const py = player.y%map[0].length;
-
-
-    ctx.fillStyle = 'white';
-    ctx.fillRect(py*minimap_scale-minimap_scale/2|0, px*minimap_scale-minimap_scale/2|0, minimap_scale, minimap_scale);
-
-    const pr1 = player.rot-fov/2;
-    const pr2 = player.rot+fov/2;
-    ctx.fillStyle = '#0000aa99';
-    ctx.beginPath();
-    ctx.moveTo(py*minimap_scale, px*minimap_scale);
-    ctx.lineTo(py*minimap_scale+Math.sin(pr1)*line_scaler, px*minimap_scale+Math.cos(pr1)*line_scaler);
-    ctx.lineTo(py*minimap_scale+Math.sin(pr2)*line_scaler, px*minimap_scale+Math.cos(pr2)*line_scaler);
-    ctx.lineTo(py*minimap_scale, px*minimap_scale);
-    ctx.fill();
-
-    ctx.fillStyle = 'red';
-    ctx.font = '8px "Lucida Console", Monaco, monospace';
-    ctx.fillText(`${px|0} ${py|0} ${(player.rot*100|0)/100}`, 40, 10);
-  }
+  //   const px = player.x%map.length;
+  //   const py = player.y%map[0].length;
 
 
+  //   ctx.fillStyle = 'white';
+  //   ctx.fillRect(py*minimap_scale-minimap_scale/2|0, px*minimap_scale-minimap_scale/2|0, minimap_scale, minimap_scale);
 
-  function is_solid(x, y) {
-    if (x < 0 || y < 0) return true;
-    x %= map.length;
-    y %= map[0].length;
-    return map[x][y];
-  }
+  //   const pr1 = player.rot-fov/2;
+  //   const pr2 = player.rot+fov/2;
+  //   ctx.fillStyle = '#0000aa99';
+  //   ctx.beginPath();
+  //   ctx.moveTo(py*minimap_scale, px*minimap_scale);
+  //   ctx.lineTo(py*minimap_scale+Math.sin(pr1)*line_scaler, px*minimap_scale+Math.cos(pr1)*line_scaler);
+  //   ctx.lineTo(py*minimap_scale+Math.sin(pr2)*line_scaler, px*minimap_scale+Math.cos(pr2)*line_scaler);
+  //   ctx.lineTo(py*minimap_scale, px*minimap_scale);
+  //   ctx.fill();
+
+  //   ctx.fillStyle = 'red';
+  //   ctx.font = '8px "Lucida Console", Monaco, monospace';
+  //   ctx.fillText(`${px|0} ${py|0} ${(player.rot*100|0)/100}`, 40, 10);
+  // }
+
+
+
 
 
   function keyboard() {
@@ -143,60 +139,68 @@ window.onload = async function () {
     let dx = 0;
     let dy = 0;
     if (keys[87]) {
-      // dx += Math.cos(player.rot) * player.move_speed;
-      // dy += Math.sin(player.rot) * player.move_speed;
-
       dx += player.dirX * player.move_speed;
       dy += player.dirY * player.move_speed;
     }
     if (keys[83]) {
-      // dx -= Math.cos(player.rot) * player.move_speed;
-      // dy -= Math.sin(player.rot) * player.move_speed;
-
       dx -= player.dirX * player.move_speed;
       dy -= player.dirY * player.move_speed;
     }
     if (dx || dy) {
-      const [x, y] = Raycaster.collision(player.x, player.y, player.x + dx, player.y + dy, 0.5, is_solid);
+      const [x, y] = Raycaster.collision(player.x, player.y, player.x + dx, player.y + dy, 0.5);
       player.x = x;
       player.y = y;
     }
   }
 
 
+  // Loads images and saves scaled verions into canvas.
+  async function load_textures(urls, width, height) {
+    // allocate memody for all textures (as one big canvas)
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height * urls.length;
+    const context = canvas.getContext('2d');
+    const number = urls.length;
+    // all images 'onload' promises will be here
+    const promises = [];
+    // load images and save into 'textures'
+    for (let i = 0; i < number; ++i) {
+      const img = new Image();
+      img.crossOrigin = 'Anonymous';
+      img.src = urls[i];
+      promises.push(new Promise((res) => {
+        img.onload = () => {
+          context.drawImage(img, 0, 0, img.width, img.height, 0, i * height, width, height);
+          res();
+        }
+        img.onerror = () => {
+          context.fillStyle = 'hotpink'; // error color
+          context.fillRect(0, i * height, width, height);
+          console.log(`create_texture_data:: [${i}]:${urls[i]} cannot be loaded`);
+          res();
+        }
+      }));
+    }
+    await Promise.all(promises);
+    const data = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    return { width, height, canvas, data, number };
+  }
+
+
+  const textures = await load_textures([
+    'https://avatars.mds.yandex.net/get-pdb/1642325/6602208b-31de-49df-adf1-51ef93a5cbac/s1200?webp=false',
+    'https://yandex.ru/images/_crpd/GWML6d667/185edeKjN4E/N74dv6GSovO-dmqtBTkw_yU62NDX_pzGdMRhcmU0rVk1dPm1V9n-R0vdItIVyBUZ-LCM4I0rFFevhRL3idqbljM9HTk0Ane2P2buK0c5IT9nrs_Fwq9KhLUFZfIkMrrcQ',
+  ], 128, 128);
 
 
 
+  Raycaster.setup({ map, textures, player });
 
 
-  const max_dist = 100;
-
-  const width = ctx.canvas.width;
-  const height = ctx.canvas.height;
-  const strip_width = 1;
-  const rays_number = width / strip_width;
-  const angle_step = fov / rays_number;
-
-
-
-
-  const wall_img = new Image();
-  wall_img.src = WALL_IMG_DATA;
-  wall_img.onload = () => { console.log(wall_img.width, wall_img.height); }
 
   const sky_img = new Image();
   sky_img.src = SKY_IMG_DATA;
-
-  const floor_img = new Image();
-  floor_img.src = FLOOR_IMG_DATA;
-  await new Promise(res => floor_img.onload = res);
-
-
-  const textures = document.createElement('canvas').getContext('2d');
-  textures.canvas.width = 128; // fixed
-  textures.canvas.height = 128;
-  textures.drawImage(floor_img, 0, 0);
-
 
 
   function draw_sky() {
@@ -219,53 +223,7 @@ window.onload = async function () {
   }
 
 
-  function draw_scene() {
 
-    let ray_angle = -(fov / 2);
-
-    for (let i = 0; i < rays_number; ++i) {
-
-      ray_angle += angle_step;
-
-      const { dist, texture_x, horizontal } = Raycaster.cast(player.rot + ray_angle, player.x, player.y, max_dist, is_solid);
-
-      if (dist) {
-        const sdist = Raycaster.distance(dist, ray_angle);
-        const strip_height = height / sdist;
-        const left = width - strip_width * i;
-        const top = (height - strip_height) / 2;
-
-        const sx = (texture_x*(wall_img.width-1));
-        const sy = 0;
-        const sw = strip_width;
-        const sh = wall_img.height;
-        const dx = left|0;
-        const dy = top|0;
-        const dw = -strip_width|0;
-        const dh = strip_height|0;
-        ctx.drawImage(wall_img, sx, sy, sw, sh, dx, dy, dw, dh);
-
-        const brightness = 0.1;
-        const light = 1.5 + 0.5 * (horizontal|0);
-        const rgb = '0,0,0'; //(256 / sdist) << 1;
-        const a = (1-1/sdist*(light))/(1+brightness);
-        ctx.fillStyle = `rgba(${rgb},${a})`;
-        ctx.fillRect(left|0, top|0, -strip_width|0, strip_height|0);
-
-      }
-
-    }
-  }
-
-
-
-
-  function is_solid(x, y) {
-    if (x < 0 || y < 0) return true;
-    x %= map.length;
-    y %= map[0].length;
-    return map[x][y];
-  }
 
 
 
@@ -278,17 +236,13 @@ window.onload = async function () {
 
 
 
-    Raycaster.horizontal_cast(textures, ctx, floor_img, player);
+    Raycaster.cast_floor(ctx);
 
     draw_sky();
 
-    Raycaster.cast_wall(ctx, player, wall_img, is_solid);
+    Raycaster.cast_walls(ctx);
 
 
-
-    // draw_scene();
-
-    // draw_minimap();
 
     keyboard();
   }
