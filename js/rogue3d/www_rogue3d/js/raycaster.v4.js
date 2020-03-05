@@ -5,6 +5,7 @@ var Raycaster = {
     if (map) this.map = map;
     if (textures) this.textures = textures;
     if (player)   this.player   = player;
+
   }
 
 };
@@ -32,102 +33,20 @@ Raycaster.is_map_solid_at = function (x, y) {
 
 
 
-Raycaster.cast_floor = function (ctx) {
-
-  let { dirX, dirY, planeX, planeY, x:posX, y:posY } = this.player;
-  posX = posX;
-  posY = posY;
-
-  const screenHeight = ctx.canvas.height;
-  const screenWidth = ctx.canvas.width;
-  const h = screenHeight / 2;
-
-  const texWidth = this.textures.width;
-  const texHeight = this.textures.height;
-
-
-  const myImageData = ctx.getImageData(0, 0, screenWidth, screenHeight);
-  const texture_data = this.textures.data;
-
-
-  for(let y = 0; y < h; y++) {
-    // rayDir for leftmost ray (x = 0) and rightmost ray (x = w)
-    let rayDirX0 = -(dirX - planeX);
-    let rayDirY0 = -(dirY - planeY);
-    let rayDirX1 = -(dirX + planeX);
-    let rayDirY1 = -(dirY + planeY);
-
-    // Current y position compared to the center of the screen (the horizon)
-    let p = y - screenHeight / 2;
-
-    // Vertical position of the camera.
-    let posZ = 0.5 * screenHeight;
-
-    // Horizontal distance from the camera to the floor for the current row.
-    // 0.5 is the z position exactly in the middle between floor and ceiling.
-    let rowDistance = posZ / p;
-
-    // calculate the real world step vector we have to add for each x (parallel to camera plane)
-    // adding step by step avoids multiplications with a weight in the inner loop
-    let floorStepX = rowDistance * (rayDirX1 - rayDirX0) / screenWidth;
-    let floorStepY = rowDistance * (rayDirY1 - rayDirY0) / screenWidth;
-
-    // real world coordinates of the leftmost column. This will be updated as we step to the right.
-    let floorX = posX + rowDistance * rayDirX0;
-    let floorY = posY + rowDistance * rayDirY0;
-
-
-
-    for(let x = 0; x < screenWidth; ++x) {
-      // the cell coord is simply got from the integer parts of floorX and floorY
-      let cellX = ~~(floorX);
-      let cellY = ~~(floorY);
-
-      // get the texture coordinate from the fractional part
-      let tx = ~~(texWidth * (floorX - cellX)) & (texWidth - 1);
-      let ty = ~~(texHeight * (floorY - cellY)) & (texHeight - 1);
-
-      floorX += floorStepX;
-      floorY += floorStepY;
-
-      // choose texture and draw the pixel
-      let floorTexture = this.get_map(cellX,cellY);
-      // console.log(floorX,floorY)
-
-      // let ceilingTexture = 6;
-
-      const k = (tx + ty*texWidth + floorTexture*this.textures.width*this.textures.height)*4;
-      const i = (x + y*screenWidth)*4;
-      const j = (x + (screenHeight-y-1)*screenWidth)*4;
-
-      // ceiling
-      myImageData.data[0 + i] = texture_data[0 + k];
-      myImageData.data[1 + i] = texture_data[1 + k];
-      myImageData.data[2 + i] = texture_data[2 + k];
-      myImageData.data[3 + i] = texture_data[3 + k];
-
-      // floor
-      myImageData.data[0 + j] = texture_data[0 + k];
-      myImageData.data[1 + j] = texture_data[1 + k];
-      myImageData.data[2 + j] = texture_data[2 + k];
-      myImageData.data[3 + j] = texture_data[3 + k];
-
-    }
-  }
-  ctx.putImageData(myImageData, 0, 0);
-}
-
-
-
-
-
 
 
 Raycaster.cast_walls = function (ctx) {
-  const max_dist = 100;
+  const max_dist = 50;
   const w = ctx.canvas.width;
   const h = ctx.canvas.height;
-  const { dirX, dirY, planeX, planeY, x:posX, y:posY } = this.player;
+
+  const { direction, plane2d, position } = this.player;
+  const dirX = direction[0];
+  const dirY = direction[1];
+  const planeX = plane2d[0];
+  const planeY = plane2d[1];
+  const posX = position[0];
+  const posY = position[1];
 
   const texWidth = this.textures.width;
   const texHeight = this.textures.height;
@@ -137,7 +56,7 @@ Raycaster.cast_walls = function (ctx) {
   const buffer = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
   const tdata = this.textures.data;
 
-
+  let max_perp_dist = 0;
 
   for(let x = 0; x < w; x++) {
     //calculate ray position and direction
@@ -200,11 +119,14 @@ Raycaster.cast_walls = function (ctx) {
     }
 
     //Calculate distance of perpendicular ray (Euclidean distance will give fisheye effect!)
-    // if (side == 0) perpWallDist = (mapX - posX + (1 - stepX) / 2) / rayDirX;
-    // else           perpWallDist = (mapY - posY + (1 - stepY) / 2) / rayDirY;
-
     if (side == 0) perpWallDist = (mapX - posX + (1 - stepX) / 2) / rayDirX;
     else           perpWallDist = (mapY - posY + (1 - stepY) / 2) / rayDirY;
+
+
+    const brightness = Math.max(0, 1 - (perpWallDist / 50));
+
+
+    if (max_perp_dist < perpWallDist) max_perp_dist = perpWallDist;
 
     //Calculate height of line to draw on screen
     let lineHeight = ~~(h / perpWallDist);
@@ -231,26 +153,151 @@ Raycaster.cast_walls = function (ctx) {
     // Starting texture coordinate
     let texPos = (drawStart - h / 2 + lineHeight / 2) * step;
 
+    if (hit) {
+
+      for (let y = drawStart|0; y<drawEnd; y++) {
+        // Cast the texture coordinate to integer, and mask with (texHeight - 1) in case of overflow
+        let texY = (~~texPos) & (texHeight - 1);
+        texPos += step;
 
 
-    for (let y = drawStart|0; y<drawEnd; y++) {
-      // Cast the texture coordinate to integer, and mask with (texHeight - 1) in case of overflow
-      let texY = (~~texPos) & (texHeight - 1);
-      texPos += step;
+        const k = ((texX + texY*texWidth + texNum*this.textures.width*this.textures.height)*4);
+        const i = ((x + y*w)*4);
+        buffer.data[0 + i] = tdata[0 + k] * brightness;
+        buffer.data[1 + i] = tdata[1 + k] * brightness;
+        buffer.data[2 + i] = tdata[2 + k] * brightness;
+        buffer.data[3 + i] = tdata[3 + k] * brightness;
+      }
 
-
-      const k = ((texX + texY*texWidth + texNum*this.textures.width*this.textures.height)*4);
-      const i = ((x + y*w)*4);
-      buffer.data[0 + i] = tdata[0 + k];
-      buffer.data[1 + i] = tdata[1 + k];
-      buffer.data[2 + i] = tdata[2 + k];
-      buffer.data[3 + i] = tdata[3 + k];
     }
-
   }
 
   ctx.putImageData(buffer, 0, 0);
+
+
+  ctx.fillStyle = 'red';
+  ctx.fillText(max_perp_dist, 10, 20);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Raycaster.cast_floor = function (ctx) {
+
+  const { direction, plane2d, position } = this.player;
+  const dirX = direction[0];
+  const dirY = direction[1];
+  const planeX = plane2d[0];
+  const planeY = plane2d[1];
+  const posX = position[0];
+  const posY = position[1];
+
+  const screenHeight = ctx.canvas.height;
+  const screenWidth = ctx.canvas.width;
+  const h = screenHeight / 2;
+
+  const texWidth = this.textures.width;
+  const texHeight = this.textures.height;
+
+
+  const myImageData = ctx.getImageData(0, 0, screenWidth, screenHeight);
+  const texture_data = this.textures.data;
+
+
+  let min_rowDistance = 0xffff;
+  let max_rowDistance = 0;
+
+
+
+  for(let y = 0; y < h; y++) {
+    // rayDir for leftmost ray (x = 0) and rightmost ray (x = w)
+    let rayDirX0 = (dirX - planeX);
+    let rayDirY0 = (dirY - planeY);
+    let rayDirX1 = (dirX + planeX);
+    let rayDirY1 = (dirY + planeY);
+
+    // Current y position compared to the center of the screen (the horizon)
+    let p = (screenHeight / 2 - y)||1;
+    // Vertical position of the camera.
+    let posZ = 0.5 * screenHeight;
+    // Horizontal distance from the camera to the floor for the current row.
+    // 0.5 is the z position exactly in the middle between floor and ceiling.
+    let rowDistance = posZ / p;
+
+    if (min_rowDistance > rowDistance) min_rowDistance = rowDistance;
+    if (max_rowDistance < rowDistance) max_rowDistance = rowDistance;
+
+
+
+    // calculate the real world step vector we have to add for each x (parallel to camera plane)
+    // adding step by step avoids multiplications with a weight in the inner loop
+    let floorStepX = rowDistance * (rayDirX1 - rayDirX0) / screenWidth;
+    let floorStepY = rowDistance * (rayDirY1 - rayDirY0) / screenWidth;
+
+    // real world coordinates of the leftmost column. This will be updated as we step to the right.
+    let floorX = posX + rowDistance * rayDirX0;
+    let floorY = posY + rowDistance * rayDirY0;
+
+
+    // const brightness = Math.max(0, 1 - (rowDistance / screenHeight) * 8);
+    const brightness = Math.max(0, 1 - (rowDistance / screenHeight) * 8);
+
+
+    for(let x = 0; x < screenWidth; ++x) {
+      // the cell coord is simply got from the integer parts of floorX and floorY
+      let cellX = ~~(floorX);
+      let cellY = ~~(floorY);
+
+      // get the texture coordinate from the fractional part
+      let tx = ~~(texWidth * (floorX - cellX)) & (texWidth - 1);
+      let ty = ~~(texHeight * (floorY - cellY)) & (texHeight - 1);
+
+      floorX += floorStepX;
+      floorY += floorStepY;
+
+      // choose texture and draw the pixel
+      let floorTexture = this.get_map(cellX,cellY);
+      // console.log(floorX,floorY)
+
+      // let ceilingTexture = 6;
+
+      const k = (tx + ty*texWidth + floorTexture*this.textures.width*this.textures.height)*4;
+      const i = (x + y*screenWidth)*4;
+      const j = (x + (screenHeight-y-1)*screenWidth)*4;
+
+      // ceiling
+      myImageData.data[0 + i] = texture_data[0 + k] * brightness;
+      myImageData.data[1 + i] = texture_data[1 + k] * brightness;
+      myImageData.data[2 + i] = texture_data[2 + k] * brightness;
+      myImageData.data[3 + i] = texture_data[3 + k] * brightness;
+
+      // floor
+      myImageData.data[0 + j] = texture_data[0 + k] * brightness;
+      myImageData.data[1 + j] = texture_data[1 + k] * brightness;
+      myImageData.data[2 + j] = texture_data[2 + k] * brightness;
+      myImageData.data[3 + j] = texture_data[3 + k] * brightness;
+
+    }
+  }
+  ctx.putImageData(myImageData, 0, 0);
+
+  ctx.fillStyle = 'red';
+  ctx.fillText(min_rowDistance, 10, screenHeight-40+20);
+  ctx.fillText(max_rowDistance, 10, screenHeight-40+35);
+}
+
+
 
 
 
@@ -265,7 +312,9 @@ Raycaster.cast_walls = function (ctx) {
 // ox,oy  - old position
 // nx,ny  - new position
 // radius - collision offset
-Raycaster.collision = function (ox, oy, nx, ny, radius) {
+Raycaster.collision = function ([ox, oy], dx, dy, radius) {
+  let nx = ox + dx;
+  let ny = oy + dy;
   const x = ~~nx;
   const y = ~~ny;
 

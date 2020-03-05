@@ -1,15 +1,27 @@
 //
 window.onload = async function () {
   const ctx = document.createElement('canvas').getContext('2d');
-  ctx.canvas.width = 256;
-  ctx.canvas.height = 200;
+  ctx.canvas.width = 500;
+  ctx.canvas.height = ctx.canvas.width * 0.75;
+  console.log(ctx.canvas.height);
   resize_display();
   document.body.appendChild(ctx.canvas);
   window.onresize = resize_display;
 
+  function resize_display() {
+    const {width, height} = document.body.getBoundingClientRect();
+    if (width > height) {
+      ctx.canvas.style.width  = 'auto';
+      ctx.canvas.style.height = height;
+    } else {
+      ctx.canvas.style.width  =  width;
+      ctx.canvas.style.height = 'auto';
+    }
+  }
+
   const keys = {};
-  window.onkeyup = e => keys[e.keyCode] = false;
-  window.onkeydown = e => keys[e.keyCode] = true;
+  window.onkeyup = e => keys[e.code] = false;
+  window.onkeydown = e => keys[e.code] = true;
 
 
   const map = [
@@ -44,113 +56,54 @@ window.onload = async function () {
 
 
   const player = {
-    x: 7,
-    y: 17,
-    dir: 0,
-    rot: 0,
-    speed: 0,
-    move_speed: 0.2,
-    rot_speed: 0.05,
-
-    //initial direction vector
-    dirX: -1.0,
-    dirY: 0.0,
-
-    //the 2d raycaster version of camera plane
-    planeX: 0.0,
-    planeY: 0.66,
-
+    setup(position, rotation, move_speed, rotation_speed) {
+      this.direction = [-1.0, +0.0]; // Initial direction vector.
+      this.plane2d   = [0.00, 0.66]; // The 2d raycaster version of camera plane.
+      if (null !=       rotation) this.rotation       =       rotation;
+      if (null !=       position) this.position       =  [...position];
+      if (null !=     move_speed) this.move_speed     =     move_speed;
+      if (null != rotation_speed) this.rotation_speed = rotation_speed;
+      this.rotate(rotation);
+    },
+    //both camera direction and camera plane must be rotated
+    rotate(rotation_speed) {
+      const rsdx = Math.cos(rotation_speed);
+      const rsdy = Math.sin(rotation_speed);
+      this.rotation += rotation_speed;
+      const dirx = this.direction[0];
+      this.direction[0] = dirx * rsdx - this.direction[1] * rsdy;
+      this.direction[1] = dirx * rsdy + this.direction[1] * rsdx;
+      const plax = this.plane2d[0];
+      this.plane2d[0]   = plax * rsdx -   this.plane2d[1] * rsdy;
+      this.plane2d[1]   = plax * rsdy +   this.plane2d[1] * rsdx;
+    },
   };
 
-  // const fov = Math.PI / 4;
-  // const minimap_scale = 1;
 
-  // function draw_ray(ox, oy, x, y) {
-  //   const grad = ctx.createLinearGradient(oy * minimap_scale, ox * minimap_scale, y * minimap_scale, x  * minimap_scale);
-  //   grad.addColorStop(0, 'yellow');
-  //   grad.addColorStop(1, 'red');
-
-  //   ctx.strokeStyle = grad;
-  //   ctx.beginPath();
-  //   ctx.moveTo(oy * minimap_scale, ox * minimap_scale);
-  //   ctx.lineTo(y * minimap_scale, x * minimap_scale);
-  //   ctx.stroke();
-  // }
-
-  // function draw_minimap() {
-  //   const line_scaler = 10;
-
-  //   for (let x = 0; x < map.length; ++x) for (let y = 0; y < map[0].length; ++y) {
-  //     ctx.fillStyle = map[x][y] ? 'grey' : 'black';
-  //     ctx.fillRect(y*minimap_scale|0, x*minimap_scale|0, minimap_scale, minimap_scale);
-  //   }
-
-  //   const px = player.x%map.length;
-  //   const py = player.y%map[0].length;
-
-
-  //   ctx.fillStyle = 'white';
-  //   ctx.fillRect(py*minimap_scale-minimap_scale/2|0, px*minimap_scale-minimap_scale/2|0, minimap_scale, minimap_scale);
-
-  //   const pr1 = player.rot-fov/2;
-  //   const pr2 = player.rot+fov/2;
-  //   ctx.fillStyle = '#0000aa99';
-  //   ctx.beginPath();
-  //   ctx.moveTo(py*minimap_scale, px*minimap_scale);
-  //   ctx.lineTo(py*minimap_scale+Math.sin(pr1)*line_scaler, px*minimap_scale+Math.cos(pr1)*line_scaler);
-  //   ctx.lineTo(py*minimap_scale+Math.sin(pr2)*line_scaler, px*minimap_scale+Math.cos(pr2)*line_scaler);
-  //   ctx.lineTo(py*minimap_scale, px*minimap_scale);
-  //   ctx.fill();
-
-  //   ctx.fillStyle = 'red';
-  //   ctx.font = '8px "Lucida Console", Monaco, monospace';
-  //   ctx.fillText(`${px|0} ${py|0} ${(player.rot*100|0)/100}`, 40, 10);
-  // }
-
-
+  player.setup([9, 9], 0.5, 0.2, 0.05);
 
 
 
   function keyboard() {
     // rotation
-    if (keys[65]) {
-      player.rot += player.rot_speed;
-
-      //both camera direction and camera plane must be rotated
-      let oldDirX = player.dirX;
-      player.dirX = player.dirX * Math.cos(player.rot_speed) - player.dirY * Math.sin(player.rot_speed);
-      player.dirY = oldDirX * Math.sin(player.rot_speed) + player.dirY * Math.cos(player.rot_speed);
-      let oldPlaneX = player.planeX;
-      player.planeX = player.planeX * Math.cos(player.rot_speed) - player.planeY * Math.sin(player.rot_speed);
-      player.planeY = oldPlaneX * Math.sin(player.rot_speed) + player.planeY * Math.cos(player.rot_speed);
+    if (keys['KeyA']) {
+      player.rotate(+player.rotation_speed);
     }
-    if (keys[68]) {
-      player.rot -= player.rot_speed;
-
-      //both camera direction and camera plane must be rotated
-      let oldDirX = player.dirX;
-      player.dirX = player.dirX * Math.cos(-player.rot_speed) - player.dirY * Math.sin(-player.rot_speed);
-      player.dirY = oldDirX * Math.sin(-player.rot_speed) + player.dirY * Math.cos(-player.rot_speed);
-      let oldPlaneX = player.planeX;
-      player.planeX = player.planeX * Math.cos(-player.rot_speed) - player.planeY * Math.sin(-player.rot_speed);
-      player.planeY = oldPlaneX * Math.sin(-player.rot_speed) + player.planeY * Math.cos(-player.rot_speed);
+    if (keys['KeyD']) {
+      player.rotate(-player.rotation_speed);
     }
     // movement
-    let dx = 0;
-    let dy = 0;
-    if (keys[87]) {
-      dx += player.dirX * player.move_speed;
-      dy += player.dirY * player.move_speed;
+    let dx, dy;
+    if (keys['KeyW']) {
+      dx = +player.direction[0] * player.move_speed;
+      dy = +player.direction[1] * player.move_speed;
     }
-    if (keys[83]) {
-      dx -= player.dirX * player.move_speed;
-      dy -= player.dirY * player.move_speed;
+    if (keys['KeyS']) {
+      dx = -player.direction[0] * player.move_speed;
+      dy = -player.direction[1] * player.move_speed;
     }
-    if (dx || dy) {
-      const [x, y] = Raycaster.collision(player.x, player.y, player.x + dx, player.y + dy, 0.5);
-      player.x = x;
-      player.y = y;
-    }
+    if (dx || dy) player.position = Raycaster.collision(player.position, dx, dy, 0.5);
+
   }
 
 
@@ -201,12 +154,13 @@ window.onload = async function () {
 
   const sky_img = new Image();
   sky_img.src = SKY_IMG_DATA;
-
+  let sky_x = 0;
 
   function draw_sky() {
+    sky_x+=0.001;
     // https://yandex.ru/images/search?text=%D0%BD%D0%B5%D0%B1%D0%BE%20360
     const width = ctx.canvas.width * 5.5;
-    let angle = player.rot; if ((angle %= Math.PI*2) < 0) angle += Math.PI*2;
+    let angle = player.rotation+sky_x; if ((angle %= Math.PI*2) < 0) angle += Math.PI*2;
     const sx = 0;
     const sy = 0;
     const sw = sky_img.width;
@@ -228,7 +182,7 @@ window.onload = async function () {
 
 
 
-  function draw() {
+  function render(timestamp=0) {
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
@@ -245,27 +199,18 @@ window.onload = async function () {
 
 
     keyboard();
+
+    requestAnimationFrame(render);
   }
 
 
 
-  draw();
-  setInterval(draw, 50);
+  render();
 
 
 
 
-  function resize_display() {
-    const {width, height} = document.body.getBoundingClientRect();
-    if (width > height) {
-      ctx.canvas.style.width = 'auto';
-      ctx.canvas.style.height = document.body.getBoundingClientRect().height;
-    }
-    else {
-      ctx.canvas.style.width = document.body.getBoundingClientRect().width;
-      ctx.canvas.style.height = 'auto';
-    }
-  }
+
 
 
 }
