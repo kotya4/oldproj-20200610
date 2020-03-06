@@ -163,10 +163,10 @@ Raycaster.cast_walls = function (ctx) {
 
         const k = ((texX + texY*texWidth + texNum*this.textures.width*this.textures.height)*4);
         const i = ((x + y*w)*4);
-        buffer.data[0 + i] = tdata[0 + k] * brightness;
-        buffer.data[1 + i] = tdata[1 + k] * brightness;
-        buffer.data[2 + i] = tdata[2 + k] * brightness;
-        buffer.data[3 + i] = tdata[3 + k] * brightness;
+        buffer.data[0 + i] = tdata[0 + k] * brightness + 20 * side | 0;
+        buffer.data[1 + i] = tdata[1 + k] * brightness + 20 * side | 0;
+        buffer.data[2 + i] = tdata[2 + k] * brightness + 20 * side | 0;
+        buffer.data[3 + i] = tdata[3 + k] * brightness + 20 * side | 0;
       }
 
     }

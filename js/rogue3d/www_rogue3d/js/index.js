@@ -142,8 +142,10 @@ window.onload = async function () {
 
 
   const textures = await load_textures([
-    'https://avatars.mds.yandex.net/get-pdb/1642325/6602208b-31de-49df-adf1-51ef93a5cbac/s1200?webp=false',
-    'https://yandex.ru/images/_crpd/GWML6d667/185edeKjN4E/N74dv6GSovO-dmqtBTkw_yU62NDX_pzGdMRhcmU0rVk1dPm1V9n-R0vdItIVyBUZ-LCM4I0rFFevhRL3idqbljM9HTk0Ane2P2buK0c5IT9nrs_Fwq9KhLUFZfIkMrrcQ',
+    FLOOR_IMG_DATA,
+    WALL_IMG_DATA,
+    //'https://avatars.mds.yandex.net/get-pdb/1642325/6602208b-31de-49df-adf1-51ef93a5cbac/s1200?webp=false',
+    //'https://yandex.ru/images/_crpd/GWML6d667/185edeKjN4E/N74dv6GSovO-dmqtBTkw_yU62NDX_pzGdMRhcmU0rVk1dPm1V9n-R0vdItIVyBUZ-LCM4I0rFFevhRL3idqbljM9HTk0Ane2P2buK0c5IT9nrs_Fwq9KhLUFZfIkMrrcQ',
   ], 128, 128);
 
 
@@ -157,7 +159,7 @@ window.onload = async function () {
   let sky_x = 0;
 
   function draw_sky() {
-    sky_x+=0.001;
+    sky_x+=0.0002;
     // https://yandex.ru/images/search?text=%D0%BD%D0%B5%D0%B1%D0%BE%20360
     const width = ctx.canvas.width * 5.5;
     let angle = player.rotation+sky_x; if ((angle %= Math.PI*2) < 0) angle += Math.PI*2;

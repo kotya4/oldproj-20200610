@@ -1,19 +1,54 @@
 body {
   font-family: "Lucida Console", Monaco, monospace;
-  font-size: 12px;
+  font-size: 60px;
   background-color: white;
-  color: #111;
-  justify-content: center;
+  color: #aaa;
+  /*justify-content: center;
   align-items: center;
-  /*display: flex;*/
+  display: flex;*/
   height: 100vh;
   padding: 0;
   margin: 0;
   width: 100vw;
-  white-space: nowrap;
+  word-wrap: break-word;
+  /*white-space: nowrap;*/
+
 }
 
 canvas {
   image-rendering: pixelated;
   /*width: 640px;*/
+}
+
+
+
+.ground-0 {
+  font-size: 60px;
+  color: #aaa;
+  position: absolute;
+  left: 0;
+  top: 0;
+  word-wrap: break-word;
+  height: 100%;
+  width: 100%;
+}
+.ground-1 {
+  font-size: 40px;
+  color: #ccc;
+  position: absolute;
+  left: 0;
+  top: 0;
+  word-wrap: break-word;
+  height: 100%;
+  width: 100%;
+}
+.ground-2 {
+  font-size: 20px;
+  color: #eee;
+  position: absolute;
+  left: 0;
+  top: 0;
+  word-wrap: break-word;
+  height: 100%;
+  width: 100%;
 }
