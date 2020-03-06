@@ -1,0 +1,62 @@
+<html>
+<head>
+  <title>wav generator</title>
+  <meta charset="utf-8">
+  <link rel="stylesheet" type="text/css" href="www_wav/css/index.css">
+  <script src="www_wav/js/index.js"></script>
+</head>
+<body>
+
+  <div class="flex-wrapper">
+
+    <div class="fieldset player">
+      <div class="fieldset-title">visualizer</div>
+      <div class="canvas-wrapper">
+        <canvas id="canvas"></canvas>
+      </div>
+      <div id="player-wrapper"></div>
+    </div>
+  
+  </div>
+
+  <div class="flex-wrapper">
+
+    <div class="fieldset generator">
+      <div class="fieldset-title">generator</div>
+      <br>to_wav ([...Array( 0xfa0 * secs )].map( t =><br><br>
+      <div class="textarea">
+        <div class="textarea-editable textarea-highlight" id="textarea-highlight"></div>
+        <div class="textarea-editable text" id="textarea-editable" contenteditable></div>
+      </div>
+      <br>))<br><br>
+      <div class="err-area" id="err-area"></div>
+<pre>
+/* Helpful functions:
+ *    rnd(x) -- gives number between 0 and x-1
+ *    sin(x) -- returns sinus of x
+ *    pwr(x, y) -- powers x by y
+ *    min(x, ...) -- returns the lowest one
+ *    max(x, ...) -- returns the highest one
+ */
+</pre>
+    </div>
+
+    <div class="controls">
+      <div class="fieldset inputs">
+        <div class="fieldset-title">controls</div>
+        <br>
+      <!--
+        <input type="number" name="quantity" min="1" max="5">
+      -->
+        <div class="button" id="bn-generate">Generate</div>
+      </div>
+      <div class="fieldset footer" style="">
+        -- WAV GENERATOR (beta) --
+        <br>
+        <a href="https:/vk.com/piturd98">Sluchaynaya Kotya (c) Dec 2018</a>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

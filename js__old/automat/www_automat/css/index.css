@@ -1,0 +1,16 @@
+body {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 12px;
+  background-color: #111;
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+canvas {
+}
+
+.wrapper {
+  display: flex;
+}

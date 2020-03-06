@@ -1,0 +1,7 @@
+body {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 12px;
+  margin: 10px;
+  display: flex;
+  justify-content: space-between;
+}

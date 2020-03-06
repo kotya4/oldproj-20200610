@@ -1,0 +1,30 @@
+body {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 12px;
+  background-color: #111;
+  color: white;
+}
+
+canvas {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  image-rendering: pixelated;
+}
+
+.values {
+  float: right;
+  text-align: left;
+  width: 150px;
+}
+
+.justify {
+  text-align: justify;
+}
+
+.justify:after {
+  content: "";
+  display: inline-block;
+  width: 100%;
+}
