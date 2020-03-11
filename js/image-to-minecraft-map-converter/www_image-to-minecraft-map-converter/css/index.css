@@ -1,0 +1,13 @@
+/* Body */
+body {
+  background-color: #111;
+  justify-content: center;
+  font-family: "Lucida Console", monospace;
+  font-size: 14px;
+  color: #aaa;
+}
+
+/* Canvas */
+.canvas {
+  image-rendering: pixelated;
+}
