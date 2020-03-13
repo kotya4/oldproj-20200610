@@ -6,7 +6,6 @@ window.onload = function() {
 
   const mchain = Markov(source.split(''), 4);
 
-
   console.log(
     ExecuteMarkov(mchain),
     ExecuteMarkov(mchain),
