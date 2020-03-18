@@ -101,6 +101,8 @@ window.onload = function() {
 
     const idata = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
 
+    // TODO: you can index colors before measuring length
+
     for (let i = 0; i < idata.data.length; i += 4) {
       const r = idata.data[0+i];
       const g = idata.data[1+i];
