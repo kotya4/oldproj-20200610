@@ -131,6 +131,8 @@ window.onload = function() {
     // }
 
 
+    // TODO: you can index colors before measuring length
+
 
     for (let i = 0; i < idata.data.length; i += 4) {
       const r = idata.data[0+i];
