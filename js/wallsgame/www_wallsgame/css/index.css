@@ -1,0 +1,20 @@
+@font-face {
+    font-family: 'Clacon';
+    src: url('../fonts/clacon.ttf');
+}
+
+body {
+  background: #aaa;
+  //display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+div {
+  float: right;
+}
+
+canvas {
+  image-rendering: pixelated;
+  //width: 300px;
+}

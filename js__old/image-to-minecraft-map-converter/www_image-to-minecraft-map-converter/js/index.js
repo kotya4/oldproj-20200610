@@ -101,21 +101,51 @@ window.onload = function() {
 
     const idata = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
 
+    // for (let i = 0; i < idata.data.length; i += 4) {
+    //   const r = idata.data[0+i];
+    //   const g = idata.data[1+i];
+    //   const b = idata.data[2+i];
+    //   const pixel_hsl = rgbToHsl(r, g, b);
+
+    //   let min_dist_value = 0xffff;
+    //   let min_dist_index = 0;
+
+    //   for (let t = 0; t < TABLE.length; ++t) {
+    //     const table_hsl = TABLE[t].hsl;
+
+    //     let dh = Math.abs(pixel_hsl[0]-table_hsl[0]); dh = Math.min(dh, 1-dh);
+    //     let ds = Math.abs(pixel_hsl[1]-table_hsl[1]);
+    //     let dl = Math.abs(pixel_hsl[2]-table_hsl[2]);
+
+    //     let dist = Math.hypot(dh, ds, dl);
+
+    //     if (min_dist_value > dist) {
+    //       min_dist_value = dist;
+    //       min_dist_index = t;
+    //     }
+    //   }
+
+    //   idata.data[0+i] = TABLE[min_dist_index].rgb[0];
+    //   idata.data[1+i] = TABLE[min_dist_index].rgb[1];
+    //   idata.data[2+i] = TABLE[min_dist_index].rgb[2];
+    // }
+
+
+
     for (let i = 0; i < idata.data.length; i += 4) {
       const r = idata.data[0+i];
       const g = idata.data[1+i];
       const b = idata.data[2+i];
-      const pixel_hsl = rgbToHsl(r, g, b);
 
       let min_dist_value = 0xffff;
       let min_dist_index = 0;
 
       for (let t = 0; t < TABLE.length; ++t) {
-        const table_hsl = TABLE[t].hsl;
+        const table_rgb = TABLE[t].rgb;
 
-        let dh = Math.abs(pixel_hsl[0]-table_hsl[0]); dh = Math.min(dh, 1-dh);
-        let ds = Math.abs(pixel_hsl[1]-table_hsl[1]);
-        let dl = Math.abs(pixel_hsl[2]-table_hsl[2]);
+        let dh = Math.abs(r-table_rgb[0]);
+        let ds = Math.abs(g-table_rgb[1]);
+        let dl = Math.abs(b-table_rgb[2]);
 
         let dist = Math.hypot(dh, ds, dl);
 
@@ -128,11 +158,17 @@ window.onload = function() {
       idata.data[0+i] = TABLE[min_dist_index].rgb[0];
       idata.data[1+i] = TABLE[min_dist_index].rgb[1];
       idata.data[2+i] = TABLE[min_dist_index].rgb[2];
+
+      if (TABLE[min_dist_index].count) TABLE[min_dist_index].count += 1;
+      else TABLE[min_dist_index].count = 1;
     }
+
 
     ctx.putImageData(idata, 0, 0);
 
     $('.status').html('done');
+
+    TABLE.filter(e => e.count).forEach(e => console.log(`${e.count} (${e.count/64|0} st. + ${e.count%64}) ::: ${e.blocks}`));
   }
 
 }
