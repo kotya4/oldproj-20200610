@@ -1,3 +1,6 @@
+var Includer = () => { return { include } };
+var Utils = { array_safe_value: get_safe_value };
+
 Includer().include('www_march/js/', [
   'canvas2d.js',
   'webgl.js',

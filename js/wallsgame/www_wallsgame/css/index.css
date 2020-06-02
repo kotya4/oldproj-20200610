@@ -3,11 +3,17 @@
     src: url('../fonts/clacon.ttf');
 }
 
+@font-face {
+    font-family: 'FSEX300';
+    src: url('../fonts/FSEX300.ttf');
+}
+
 body {
   background: #aaa;
   //display: flex;
   justify-content: center;
   align-items: center;
+  font-family: "FSEX300";
 }
 
 div {

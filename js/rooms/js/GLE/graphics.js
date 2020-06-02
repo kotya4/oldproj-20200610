@@ -7,8 +7,8 @@ function Graphics(screen_width, screen_height, parent) {
 
   // TIP: Call 'load_textures' as fast as you can, images loades asyncronously.
   const textures = WebGLu.access(webgl.load_textures(DATA, [
-    'cat',
-    'normalmap',
+    'normal',
+    'wall',
   ], 'data/', '.png'));
 
   const shader_program = webgl.create_shader_program(

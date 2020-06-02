@@ -22,6 +22,14 @@ function Fixedsys8x12_Display(WIDTH, HEIGHT) {
   }));
 
 
+  const textbuffer = document.createElement('canvas').getContext('2d');
+  textbuffer.canvas.height = HEIGHT*CHAR_HEIGHT;
+  textbuffer.canvas.width = WIDTH*CHAR_WIDTH;
+
+  const forebuffer = document.createElement('canvas').getContext('2d');
+  forebuffer.canvas.height = HEIGHT*CHAR_HEIGHT;
+  forebuffer.canvas.width = WIDTH*CHAR_WIDTH;
+
   // Output.
   return {
     // Constants.
@@ -73,17 +81,34 @@ function Fixedsys8x12_Display(WIDTH, HEIGHT) {
 
   // Draws buffer into canvas.
   function flush(ctx, offset_x = 0, offset_y = 0) {
+    textbuffer.clearRect(0, 0, textbuffer.canvas.width, textbuffer.canvas.height);
+    forebuffer.clearRect(0, 0, forebuffer.canvas.width, forebuffer.canvas.height);
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
     for (let i = 0; i < buffer.length; ++i) {
       const x = offset_x + (i % WIDTH    ) * CHAR_WIDTH;
       const y = offset_y + (i / WIDTH | 0) * CHAR_HEIGHT;
       // Draws character from buffer object.
       // TODO: implement colors
-      const { char_index } = buffer[i];
+      const { char_index, foreground, background } = buffer[i];
       const char_x = char_index & 15; // 16x16 table
       const char_y = char_index >> 4;
-      ctx.drawImage(table_img, char_x * CHAR_WIDTH, char_y * CHAR_HEIGHT, CHAR_WIDTH,
-                    CHAR_HEIGHT, x, y, CHAR_WIDTH, CHAR_HEIGHT);
+      // text
+      textbuffer.drawImage(table_img, char_x * CHAR_WIDTH, char_y * CHAR_HEIGHT, CHAR_WIDTH,
+                           CHAR_HEIGHT, x, y, CHAR_WIDTH, CHAR_HEIGHT);
+      // composite
+      forebuffer.fillStyle = foreground;
+      forebuffer.fillRect(x, y, CHAR_WIDTH, CHAR_HEIGHT);
+      // destination
+      ctx.fillStyle = background;
+      ctx.fillRect(x, y, CHAR_WIDTH, CHAR_HEIGHT);
     }
+
+    textbuffer.globalCompositeOperation = 'source-in';
+    textbuffer.drawImage(forebuffer.canvas, 0, 0);
+    textbuffer.globalCompositeOperation = 'source-over';
+
+    ctx.drawImage(textbuffer.canvas, 0, 0);
   }
 
 
@@ -168,6 +193,8 @@ Fixedsys8x12_Display.demo = async function () {
   // Initiating.
   const fixedsys = Fixedsys8x12_Display(40, 40);
 
+  let flag = false;
+
   // Render Loop.
   setInterval(() => {
     // Clear canvas.
@@ -222,19 +249,41 @@ Fixedsys8x12_Display.demo = async function () {
       const rx = (x / 0.95) * fixedsys.CHAR_WIDTH  - origin[0];
       const ry = (y / 0.95) * fixedsys.CHAR_HEIGHT - origin[1];
       if (rx ** 2 + ry ** 2 > bgRadius ** 2) {
-        fixedsys.get_buffer_object(x, y).char_index = Math.random() * 256 | 0;
+        fixedsys.get_buffer_object(x, y).char_index = Math.abs((x+1)*(y+1))%256;//Math.random() * 256 | 0;
+        fixedsys.get_buffer_object(x, y).foreground = `rgb(${Math.random()*256|0},${Math.random()*256|0},${Math.random()*256|0})`;
       }
     }
 
-    // Draws buffer into canvas.
-    fixedsys.flush(ctx);
+    if (flag) {
 
-    ctx.save();
-    ctx.globalCompositeOperation = 'difference';
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    ctx.restore();
+      ctx.fillStyle = 'black';
+      ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+      // ctx.font = '17px "FSEX300"';
+      ctx.font = '18px "Clacon"';
+      ctx.fillStyle = 'white';
+      for (let y = 0; y < fixedsys.HEIGHT; ++y)
+        for (let x = 0; x < fixedsys.WIDTH; ++x)
+      {
+        const ch = String.fromCharCode(fixedsys.get_buffer_object(x, y).char_index||32);
+        ctx.fillText(ch, x*fixedsys.CHAR_WIDTH-1|0, (y+1)*fixedsys.CHAR_HEIGHT-1|0);
+      }
+
+    }  else {
+
+
+      // Draws buffer into canvas.
+      fixedsys.flush(ctx);
+      // ctx.save();
+      // ctx.globalCompositeOperation = 'difference';
+      // ctx.fillStyle = 'white';
+      // ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+      // ctx.restore();
+    }
   }, 10);
+
+
+
+  window.onclick = () => { flag = !flag; }
 
 }
 

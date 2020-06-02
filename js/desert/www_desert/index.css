@@ -1,0 +1,35 @@
+body {
+  font-size: 11px;
+  font-family: "Lucida Console", Monaco, monospace;
+  background-color: #111;
+  color: white;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.text {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  margin: 20px;
+}
+
+.desc {
+  margin: 10px;
+  max-width: 300px;
+  text-align: justify;
+  line-height: 15px;
+  /*height: 200px;*/
+}
+
+a {
+  color: orange !important;
+}
+
+.play {
+  cursor: pointer;
+  color: yellow;
+}

@@ -7,6 +7,22 @@ const MOV_NEXT = 0;
 const ROT_NEXT = 1;
 
 window.onload = () => {
+
+
+
+  Fixedsys8x12_Display.demo();
+
+  // document.body.innerText = 'Hello';
+
+
+
+  return;
+
+
+
+
+
+
   const ctx = document.createElement('canvas').getContext('2d');
   document.body.appendChild(ctx.canvas);
   ctx.canvas.width  = 600; // wx;

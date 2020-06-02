@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css?family=Roboto+Mono&display=swap&subset=cyrillic');
 
-body {
+1234body {
   font-size: 11px;
   font-family: 'Roboto Mono', monospace;
   background-color: #111;
@@ -11,6 +11,7 @@ body {
   display: flex;
 }
 
-canvas {
-  position: absolute;
+1234canvas {
+  image-rendering: pixelated;
+  /*position: absolute;*/
 }

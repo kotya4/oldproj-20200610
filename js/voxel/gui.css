@@ -1,0 +1,31 @@
+.button {
+  /* Creates simple button */
+
+  font-size: 11px;
+  font-family: "Lucida Console", Monaco, monospace;
+
+  width: 80px;
+  height: 20px;
+  color: black;
+  background: grey;
+  user-select: none;
+  margin: 5px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+.button:hover {
+  background: lightgrey;
+  color: grey;
+}
+.button:active {
+  background: darkgrey;
+  color: lightgrey;
+}
+.button.disabled {
+  color: grey;
+  background: darkgrey;
+  pointer-events: none;
+
+}

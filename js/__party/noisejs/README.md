@@ -36,5 +36,4 @@ The library exposes an object called `noise` with the following properties:
 - **simplex3(x, y, z)**: 3D Simplex noise function
 - **perlin2(x, y)**: 2D Perlin noise function
 - **perlin3(x, y, z)**: 3D Perlin noise function
-- **seed(val)**: Seed the noise functions. Only 65536 different seeds are supported. Use a float between 0 and 1 or an integer from 1 to 65536. 
-
+- **seed(val)**: Seed the noise functions. Only 65536 different seeds are supported. Use a float between 0 and 1 or an integer from 1 to 65536.

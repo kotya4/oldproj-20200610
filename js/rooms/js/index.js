@@ -1,8 +1,5 @@
-//
-// var Random = new Math.seedrandom('myseed');
 
 window.onload = function() {
-  Math.seedrandom(5);
 
   // Init.
 
@@ -22,7 +19,7 @@ window.onload = function() {
 
   // Generates room.
 
-  const rg = RoomGenerator({ space: 10, rsize: 3 }, new Math.seedrandom(7425));
+  const rg = RoomGenerator({ space: 20, rsize: 3 }, Math.random); // new Math.seedrandom(7425));
 
   // Creates VAO out of it.
 
@@ -59,11 +56,11 @@ window.onload = function() {
     gl.bindVertexArray(vao);
 
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, g.textures('cat'));
+    gl.bindTexture(gl.TEXTURE_2D, g.textures('wall'));
     gl.uniform1i(g.u_loc('u_texture'), 0);
 
     gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, webgl.EMPTY_NORMALMAP);
+    gl.bindTexture(gl.TEXTURE_2D, g.textures('normal'));
     gl.uniform1i(g.u_loc('u_normalmap'), 1);
 
     modelview = modelview || mat4.create();

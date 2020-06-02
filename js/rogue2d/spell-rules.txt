@@ -1,0 +1,42 @@
+Как я пишу код:
+
+* Имя модуля: "НазваниеИнтерфейса.js".
+
+* Имя интерфейса: UpperCamelCase.
+** Имя "приватного" интерфейса: _UpperCamelCase.
+
+* Имя поля: lower_snake_case.
+** Имя "приватного" поля: _lower_snake_case.
+
+* Глобальные константы хранятся в модуле "Constants.js".
+** Имя глобальной константы: UPPERCASE, объявляются как "var".
+** От глобальных констрант нужно избавляться.
+
+
+-- Интерфейс - это любая функция/объект/класс, определяющая некоторую финитную структуру.
+-- Поле - это любая функция/объект/примитив, объявляющаяся внутри интерфейса.
+
+
+~~~ В дебагинге/комментариях для обращения к конкретному полю использую нотацию:
+~~~
+~~~ "Интерфейс->поле" ::: если поле относится к экземпляру интерфейса;
+~~~ Пример:
+~~~     function Interface() { return { field() => {} } }
+~~~     // Interface->field does nothing.
+~~~
+~~~ "Интерфейс.поле"  ::: если поле относится к интерфейсу;
+~~~ Пример:
+~~~     function Interface() {}
+~~~     Interface.field = () => {}
+~~~     // Interface.field does nothing.
+
+
+
+TextureManager
+    tp :: _TextureContainer (textures)
+    tc :: _TextureComposition
+        comp :: <CanvasContext2d>
+        cont :: _TextureContainer (compositions)
+            ctx :: <CanvasContext2d>
+    generate :: calls .GENERATORS[...], returns Array of _Texture
+

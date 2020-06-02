@@ -17,7 +17,7 @@ function Markov(source, len=1) {
   // generating chain
   for (let i = 0; i < source.length; ++i) {
     // search word in dictionary
-    const dict_word = source[i];
+    const dict_word = String(source[i]);
     let dict_index = dictionary.findIndex(e => e === dict_word);
     // add word to the dictionary if cannot be found
     if (dict_index < 0) {
@@ -58,7 +58,7 @@ function ExecuteMarkov({ chain, dictionary, len }, MAX=0xff) {
     // end of chain (node w/o childs)
     if (node.length < 1) break;
     // get new key from node's children
-    let acc = Math.random()*node.appears_max|0;
+    let acc = Math.random()*node.appears_max;
     let child_index = 0;
     for (let child of node) {
       acc -= child.appears;
