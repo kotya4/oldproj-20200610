@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 import subprocess
-import struct
 import wave
 import sys
 
@@ -36,10 +35,7 @@ def main():
     lame = 'C:/Program Files (x86)/Lame For Audacity/lame.exe'
     f_in = sys.argv[1]
     f_out = f_in[:-4] + '__converted.mp3'
-    f_buff = f_in[:-4] + '.wav'
-    print(f_in)
-    print(f_out)
-    print(f_buff)
+    f_buff = 'buffer.wav'
     # Converts input mp3 file into buffer wave file.
     if 0 != exec_lame([lame, '--decode', f_in, f_buff]):
         return
